@@ -1,0 +1,48 @@
+{"frames": [
+
+{
+	"filename": "Destroyer_Attack1.png",
+	"frame": {"x":0,"y":0,"w":175,"h":160},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":175,"h":160},
+	"sourceSize": {"w":175,"h":160},
+	"pivot": {"x":0.38,"y":0.5}
+},
+{
+	"filename": "Destroyer_Attack2.png",
+	"frame": {"x":0,"y":0,"w":175,"h":160},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":175,"h":160},
+	"sourceSize": {"w":175,"h":160},
+	"pivot": {"x":0.38,"y":0.5}
+},
+{
+	"filename": "Destroyer_Walk1.png",
+	"frame": {"x":0,"y":160,"w":220,"h":171},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":220,"h":171},
+	"sourceSize": {"w":220,"h":171},
+	"pivot": {"x":0.47,"y":0.5}
+},
+{
+	"filename": "Destroyer_Walk2.png",
+	"frame": {"x":0,"y":331,"w":220,"h":168},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":220,"h":168},
+	"sourceSize": {"w":220,"h":168},
+	"pivot": {"x":0.47,"y":0.5}
+}],
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "DestroyerData.png",
+	"format": "RGBA8888",
+	"size": {"w":220,"h":499},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:0cd9262be44bb0533f94d91a3fd76aa2:aeee73e9946ba56b17410068763aa261:bd6aa47ea30625c0e2d835f09f8a9096$"
+}
+}

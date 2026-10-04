@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.t3s text eol=lf
+*.bcfnt binary
+*.cwav binary
+*.wav binary
+*.ogg binary
+*.ttf binary
+*.cia binary
+*.3dsx binary

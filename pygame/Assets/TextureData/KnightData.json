@@ -1,0 +1,75 @@
+{"frames": [
+
+{
+	"filename": "Knight_Attack3.png",
+	"frame": {"x":0,"y":0,"w":161,"h":117},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":161,"h":117},
+	"sourceSize": {"w":161,"h":117},
+	"pivot": {"x":0.39,"y":0.5}
+},
+{
+	"filename": "Knight_Walk2.png",
+	"frame": {"x":161,"y":0,"w":133,"h":123},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":133,"h":123},
+	"sourceSize": {"w":133,"h":123},
+	"pivot": {"x":0.35,"y":0.5}
+},
+{
+	"filename": "Knight_Attack1.png",
+	"frame": {"x":161,"y":0,"w":133,"h":123},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":133,"h":123},
+	"sourceSize": {"w":133,"h":123},
+	"pivot": {"x":0.35,"y":0.5}
+},
+{
+	"filename": "Knight_Attack2.png",
+	"frame": {"x":294,"y":0,"w":158,"h":123},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":158,"h":123},
+	"sourceSize": {"w":158,"h":123},
+	"pivot": {"x":0.42,"y":0.5}
+},
+{
+	"filename": "Knight_Walk1.png",
+	"frame": {"x":0,"y":123,"w":112,"h":128},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":112,"h":128},
+	"sourceSize": {"w":112,"h":128},
+	"pivot": {"x":0.36,"y":0.5}
+},
+{
+	"filename": "Knight_Attack5.png",
+	"frame": {"x":112,"y":123,"w":137,"h":132},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":137,"h":132},
+	"sourceSize": {"w":137,"h":132},
+	"pivot": {"x":0.53,"y":0.5}
+},
+{
+	"filename": "Knight_Attack4.png",
+	"frame": {"x":249,"y":123,"w":154,"h":133},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":154,"h":133},
+	"sourceSize": {"w":154,"h":133},
+	"pivot": {"x":0.46,"y":0.45}
+}],
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "Knight.png",
+	"format": "RGBA8888",
+	"size": {"w":452,"h":256},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:b09de8009b67f5f1eb14ed9aa119dfa3:a48b298bdef04f2d9b6b2b2be796fa27:754cd6e7ef06c03869c641c05685312d$"
+}
+}

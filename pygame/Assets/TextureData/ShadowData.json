@@ -1,0 +1,255 @@
+{"frames": [
+
+{
+	"filename": "Shadow_Attack5.png",
+	"frame": {"x":0,"y":0,"w":136,"h":100},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":136,"h":100},
+	"sourceSize": {"w":136,"h":100},
+	"pivot": {"x":0.72,"y":0.47}
+},
+{
+	"filename": "Shadow_Attack13.png",
+	"frame": {"x":136,"y":0,"w":153,"h":100},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":153,"h":100},
+	"sourceSize": {"w":153,"h":100},
+	"pivot": {"x":0.2,"y":0.55}
+},
+{
+	"filename": "Shadow_Attack4.png",
+	"frame": {"x":289,"y":0,"w":136,"h":101},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":136,"h":101},
+	"sourceSize": {"w":136,"h":101},
+	"pivot": {"x":0.72,"y":0.45}
+},
+{
+	"filename": "Shadow_Attack3.png",
+	"frame": {"x":0,"y":101,"w":136,"h":101},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":136,"h":101},
+	"sourceSize": {"w":136,"h":101},
+	"pivot": {"x":0.72,"y":0.44}
+},
+{
+	"filename": "Shadow_Walk9.png",
+	"frame": {"x":136,"y":101,"w":105,"h":102},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":105,"h":102},
+	"sourceSize": {"w":105,"h":102},
+	"pivot": {"x":0.7,"y":0.52}
+},
+{
+	"filename": "Shadow_Walk3.png",
+	"frame": {"x":241,"y":101,"w":106,"h":103},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":106,"h":103},
+	"sourceSize": {"w":106,"h":103},
+	"pivot": {"x":0.71,"y":0.52}
+},
+{
+	"filename": "Shadow_Walk13.png",
+	"frame": {"x":347,"y":101,"w":105,"h":103},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":105,"h":103},
+	"sourceSize": {"w":105,"h":103},
+	"pivot": {"x":0.72,"y":0.51}
+},
+{
+	"filename": "Shadow_Attack1.png",
+	"frame": {"x":0,"y":204,"w":105,"h":103},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":105,"h":103},
+	"sourceSize": {"w":105,"h":103},
+	"pivot": {"x":0.66,"y":0.5}
+},
+{
+	"filename": "Shadow_Walk12.png",
+	"frame": {"x":105,"y":204,"w":105,"h":104},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":105,"h":104},
+	"sourceSize": {"w":105,"h":104},
+	"pivot": {"x":0.71,"y":0.51}
+},
+{
+	"filename": "Shadow_Walk2.png",
+	"frame": {"x":210,"y":204,"w":105,"h":105},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":105,"h":105},
+	"sourceSize": {"w":105,"h":105},
+	"pivot": {"x":0.71,"y":0.52}
+},
+{
+	"filename": "Shadow_Walk5.png",
+	"frame": {"x":315,"y":204,"w":105,"h":105},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":105,"h":105},
+	"sourceSize": {"w":105,"h":105},
+	"pivot": {"x":0.71,"y":0.51}
+},
+{
+	"filename": "Shadow_Walk8.png",
+	"frame": {"x":0,"y":309,"w":106,"h":105},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":106,"h":105},
+	"sourceSize": {"w":106,"h":105},
+	"pivot": {"x":0.72,"y":0.5}
+},
+{
+	"filename": "Shadow_Walk11.png",
+	"frame": {"x":106,"y":309,"w":104,"h":106},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":104,"h":106},
+	"sourceSize": {"w":104,"h":106},
+	"pivot": {"x":0.7,"y":0.51}
+},
+{
+	"filename": "Shadow_Walk10.png",
+	"frame": {"x":210,"y":309,"w":106,"h":106},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":106,"h":106},
+	"sourceSize": {"w":106,"h":106},
+	"pivot": {"x":0.7,"y":0.51}
+},
+{
+	"filename": "Shadow_Walk6.png",
+	"frame": {"x":316,"y":309,"w":106,"h":107},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":106,"h":107},
+	"sourceSize": {"w":106,"h":107},
+	"pivot": {"x":0.71,"y":0.51}
+},
+{
+	"filename": "Shadow_Attack2.png",
+	"frame": {"x":0,"y":416,"w":136,"h":107},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":136,"h":107},
+	"sourceSize": {"w":136,"h":107},
+	"pivot": {"x":0.82,"y":0.55}
+},
+{
+	"filename": "Shadow_Attack6.png",
+	"frame": {"x":136,"y":416,"w":145,"h":107},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":145,"h":107},
+	"sourceSize": {"w":145,"h":107},
+	"pivot": {"x":0.83,"y":0.54}
+},
+{
+	"filename": "Shadow_Walk4.png",
+	"frame": {"x":281,"y":416,"w":106,"h":108},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":106,"h":108},
+	"sourceSize": {"w":106,"h":108},
+	"pivot": {"x":0.7,"y":0.5}
+},
+{
+	"filename": "Shadow_Walk1.png",
+	"frame": {"x":387,"y":416,"w":106,"h":108},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":106,"h":108},
+	"sourceSize": {"w":106,"h":108},
+	"pivot": {"x":0.72,"y":0.5}
+},
+{
+	"filename": "Shadow_Walk7.png",
+	"frame": {"x":0,"y":524,"w":106,"h":109},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":106,"h":109},
+	"sourceSize": {"w":106,"h":109},
+	"pivot": {"x":0.71,"y":0.5}
+},
+{
+	"filename": "Shadow_Attack10.png",
+	"frame": {"x":106,"y":524,"w":188,"h":111},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":188,"h":111},
+	"sourceSize": {"w":188,"h":111},
+	"pivot": {"x":0.16,"y":0.55}
+},
+{
+	"filename": "Shadow_Attack12.png",
+	"frame": {"x":294,"y":524,"w":146,"h":115},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":146,"h":115},
+	"sourceSize": {"w":146,"h":115},
+	"pivot": {"x":0.21,"y":0.55}
+},
+{
+	"filename": "Shadow_Attack11.png",
+	"frame": {"x":0,"y":639,"w":153,"h":132},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":153,"h":132},
+	"sourceSize": {"w":153,"h":132},
+	"pivot": {"x":0.26,"y":0.61}
+},
+{
+	"filename": "Shadow_Attack7.png",
+	"frame": {"x":153,"y":639,"w":114,"h":164},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":114,"h":164},
+	"sourceSize": {"w":114,"h":164},
+	"pivot": {"x":0.74,"y":0.7}
+},
+{
+	"filename": "Shadow_Attack8.png",
+	"frame": {"x":267,"y":639,"w":219,"h":172},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":219,"h":172},
+	"sourceSize": {"w":219,"h":172},
+	"pivot": {"x":0.38,"y":0.66}
+},
+{
+	"filename": "Shadow_Attack9.png",
+	"frame": {"x":0,"y":811,"w":228,"h":173},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":228,"h":173},
+	"sourceSize": {"w":228,"h":173},
+	"pivot": {"x":0.39,"y":0.68}
+},
+{
+	"filename": "Shadow_Attack14.png",
+	"frame": {"x":228,"y":811,"w":104,"h":174},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":104,"h":174},
+	"sourceSize": {"w":104,"h":174},
+	"pivot": {"x":0.65,"y":0.72}
+}],
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "Shadow.png",
+	"format": "RGBA8888",
+	"size": {"w":493,"h":985},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:37c570fd2f3ecba388d31bad0a55c857:cea4ce12dac70a9efaf01d9f31fda613:0d70796ff8f00042915efd1783540b61$"
+}
+}

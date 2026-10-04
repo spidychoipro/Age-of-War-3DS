@@ -1,0 +1,39 @@
+{"frames": [
+
+{
+	"filename": "Executioner_Attack1.png",
+	"frame": {"x":0,"y":0,"w":203,"h":141},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":203,"h":141},
+	"sourceSize": {"w":203,"h":141},
+	"pivot": {"x":0.43,"y":0.52}
+},
+{
+	"filename": "Executioner_Attack2.png",
+	"frame": {"x":0,"y":141,"w":209,"h":146},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":209,"h":146},
+	"sourceSize": {"w":209,"h":146},
+	"pivot": {"x":0.51,"y":0.54}
+},
+{
+	"filename": "Executioner_Walk1.png",
+	"frame": {"x":0,"y":287,"w":248,"h":156},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":248,"h":156},
+	"sourceSize": {"w":248,"h":156},
+	"pivot": {"x":0.64,"y":0.57}
+}],
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "Executioner.png",
+	"format": "RGBA8888",
+	"size": {"w":248,"h":443},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:302600771a3a6be9f89f70d637a08b86:cc7daac487aaef412779695fb3b2db35:bb132c8aab8162de07fdf502bd6d4671$"
+}
+}

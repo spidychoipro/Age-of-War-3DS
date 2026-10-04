@@ -1,0 +1,57 @@
+{"frames": [
+
+{
+	"filename": "Mage_Attack2.png",
+	"frame": {"x":0,"y":0,"w":60,"h":62},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":60,"h":62},
+	"sourceSize": {"w":60,"h":62},
+	"pivot": {"x":0.4,"y":0.56}
+},
+{
+	"filename": "Mage_Attack3.png",
+	"frame": {"x":0,"y":62,"w":60,"h":62},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":60,"h":62},
+	"sourceSize": {"w":60,"h":62},
+	"pivot": {"x":0.4,"y":0.53}
+},
+{
+	"filename": "Mage_Walk1.png",
+	"frame": {"x":0,"y":124,"w":48,"h":67},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":48,"h":67},
+	"sourceSize": {"w":48,"h":67},
+	"pivot": {"x":0.47,"y":0.5}
+},
+{
+	"filename": "Mage_Walk2.png",
+	"frame": {"x":0,"y":191,"w":57,"h":64},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":57,"h":64},
+	"sourceSize": {"w":57,"h":64},
+	"pivot": {"x":0.43,"y":0.53}
+},
+{
+	"filename": "Mage_Attack1.png",
+	"frame": {"x":0,"y":191,"w":57,"h":64},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":57,"h":64},
+	"sourceSize": {"w":57,"h":64},
+	"pivot": {"x":0.43,"y":0.53}
+}],
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "Mage.png",
+	"format": "RGBA8888",
+	"size": {"w":60,"h":255},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:bdf409f54ab8fbd02927eda9e79f9a12:f984944c86fccebe397c704d6367f42c:ddff54d444c1af24c1165783690e1887$"
+}
+}

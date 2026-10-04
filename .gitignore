@@ -1,0 +1,21 @@
+# devkitPro / build output
+3ds/build/
+3ds/*.3dsx
+3ds/*.3dsx.smdh
+3ds/*.cxi
+3ds/*.elf
+3ds/*.map
+3ds/*.o
+3ds/*.d
+3ds/*.bnr
+3ds/*.rsf
+3ds/*.cia
+*.pyc
+__pycache__/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

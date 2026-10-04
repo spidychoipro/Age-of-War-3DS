@@ -1,7 +1,7 @@
 # devkitPro / build output
 3ds/build/
 3ds/*.3dsx
-3ds/*.3dsx.smdh
+3ds/*.smdh
 3ds/*.cxi
 3ds/*.elf
 3ds/*.map

@@ -1,0 +1,43 @@
+name: 기능 제안 / Feature request
+description: 게임에 넣고 싶은 것
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        큰 기능이라도 괜찮음. 대신 뭐가 어떻게 바뀌는지 구체적으로 적어주면 좋음.
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: 뭘 하고 싶은지
+      placeholder: |
+        유닛 종류를 한 종류 더 늘리고 싶음. 사거리/체력/속도는 지금 Knight랑 비슷하게.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 왜 필요한지
+      placeholder: 지금은 후반에 자원 모으기가 지루함
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 어느 쪽인가
+      options:
+        - 3DS 쪽 (libctru)
+        - pygame 쪽
+        - 문서 / 빌드 도구
+        - 기타
+    validations:
+      required: true
+
+  - type: textarea
+    id: alt
+    attributes:
+      label: 대안
+      description: 생각해둔 다른 방법이 있으면

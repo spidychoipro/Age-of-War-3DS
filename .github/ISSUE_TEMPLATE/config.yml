@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 기여 방법 / How to contribute
+    url: https://github.com/spidychoipro/Age-of-War-3DS/blob/main/CONTRIBUTING.md
+    about: 브랜치 이름, 빌드, 커밋 관례, 인코딩 주의사항
+  - name: 서드파티 에셋 출처 / Asset provenance
+    url: https://github.com/spidychoipro/Age-of-War-3DS/blob/main/THIRD_PARTY.md
+    about: 에셋을 건드리려면 먼저 읽어보셈. 라이선스 문제가 있음

@@ -55,6 +55,8 @@ install/   QR code PNG + a scan page in HTML
 
 The background, base and unit card art and the font are resized and converted from the public release assets of [`OtemPsych/Age-of-War`](https://github.com/OtemPsych/Age-of-War) for 3DS. The original music and sound effects are not wired up yet because of file size.
 
+That source repo ships no license. So those assets are not covered by this repo's MIT license, and they sit here with their rights unresolved. Details in [`THIRD_PARTY.md`](THIRD_PARTY.md).
+
 The script that generated `3ds/data/aow3ds_font.bcfnt` isn't in this repo. Rebuilding it would need a separate BCFNT conversion tool.
 
 The code here is an independent implementation, not the original game code moved over. Build artifacts go to the releases only and are never committed.
@@ -63,3 +65,19 @@ The code here is an independent implementation, not the original game code moved
 
 - 3DS: battle on the top screen, base HP / resources / age / production UI on the bottom. 6 unit types, 2 turret types, 3 ages.
 - Python: only `src/settings.py`, `src/gamedata.py` and assets. There's no entry point (`main.py`), so it doesn't run.
+
+## Contributing
+
+Issues and PRs are welcome in English or Korean.
+
+- Bug → open an issue first, fix on `fix/issue-<number>`, put `Closes #<number>` in the PR body
+- Feature → skip the issue, open a PR straight from `feat/<summary>`
+- Build steps, running it, branch/commit conventions, encoding pitfalls → [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- Not sure whether something is welcome? Just ask in an issue. This repo is small enough that the questions become the docs
+
+Only commit third-party assets whose license you can name. Open an issue first if it's unclear.
+
+## License
+
+MIT for the source code ([`LICENSE`](LICENSE)). Not applicable to the third-party assets, see [`THIRD_PARTY.md`](THIRD_PARTY.md).
+

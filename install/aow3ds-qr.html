@@ -15,6 +15,7 @@
   .qr img { display:block; width:220px; max-width:78vw; height:auto; image-rendering:pixelated; }
   .url { margin-top:18px; font-family:ui-monospace,Consolas,monospace; font-size:12px;
           color:#47506a; word-break:break-all; }
+  .note { margin:10px 0 0; font-size:13px; color:#47506a; }
   ol { margin:18px 0 0; padding-left:20px; font-size:14px; line-height:1.85; color:#2b3242; }
   footer { margin-top:26px; font-size:12px; color:#808a9c; }
   code { background:#eef1f7; border-radius:5px; padding:1px 5px; font-size:13px; }
@@ -23,13 +24,18 @@
 <body>
 <div class="wrap">
   <h1>Age of War 3DS - aow3ds.cia</h1>
-  <p class="sub">QR 안에는 CIA 의 직접 다운로드 링크가 들어있다.</p>
+  <p class="sub">QR 안에는 CIA의 직접 다운로드 링크가 들어있다.</p>
   <div class="card">
     <div class="qr"><img src="aow3ds-qr.png" alt="aow3ds.cia install QR"></div>
     <div class="url">https://github.com/spidychoipro/Age-of-War-3DS/releases/download/v0.1.1/aow3ds.cia</div>
     <ol>
-      <li>3DS 카메라(FBI)로 QR 을 읽으면 CIA 를 바로 내려받아 설치한다.</li><li>1. FBI 실행</li><li>2. Remote Install → Scan QR code</li><li>3. 이 화면을 보면서 3DS 카메라로 QR 을 읽는다</li><li>4. 아래 화면에서 Yes</li><li>SD 카드로 설치하려면 aow3ds.cia 만 내려받아 FBI → SD → Install and delete CIA.</li><li>개발용 title ID(0x0003FF3F)라서 시그패치가 있는 커스텀 펌웨어에서만 설치된다.</li>
+      <li>FBI를 실행한다.</li>
+      <li><code>Remote Install</code> → <code>Scan QR code</code></li>
+      <li>이 화면을 띄워놓고 3DS 카메라로 QR 코드를 읽는다.</li>
+      <li>URL이 뜨면 <code>Yes</code>를 눌러 CIA를 내려받아 설치한다.</li>
     </ol>
+    <p class="note">SD 카드로 설치하려면 <code>aow3ds.cia</code>만 내려받아 FBI → SD → Install and delete CIA.</p>
+    <p class="note">개발용 title ID(<code>0x0003FF3F</code>)라서 시그패치가 있는 커스텀 펌웨어에서만 설치된다.</p>
   </div>
   <footer>Age of War 3DS · <code>libctru</code> port</footer>
 </div>

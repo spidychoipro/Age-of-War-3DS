@@ -1,4 +1,4 @@
-[English README](README.en.md) | [한국어 README](README.md)
+[한국어 README](README.md)
 
 # Age of War 3DS
 

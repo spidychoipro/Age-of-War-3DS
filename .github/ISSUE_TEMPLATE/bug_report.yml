@@ -1,0 +1,66 @@
+name: 버그 신고 / Bug report
+description: 게임이 안 되거나 화면이 깨졌을 때
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        소스 빌드 자체가 안 되면 그 부분을 먼저 적어주면 좋음.
+        아래 항목은 다 채우지 않아도 돼. 괜찮은 것만.
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 증상
+      description: 무슨 일이 벌어지는지
+      placeholder: |
+        시작하면 상단 화면이 검게 나옴. 유닛을 생산해도 안 나감.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 재현 절차
+      description: 처음 상태부터 순서대로
+      placeholder: |
+        1. SD 카드에 aow3ds.cia 넣고 FBI로 설치
+        2. 홈 메뉴에서 실행
+        3. 하단 화면 UNIT 버튼 누름
+        4. Knight 카드 터치
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대하는 동작
+      placeholder: Knight 유닛이 기지 앞에서 생성되어야 함
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: 환경
+      description: 기기, 펌웨어, 빌드 방법
+      placeholder: |
+        3DS 모델: 2DS-10 / firmware 11.4
+        펌웨어: Luma3DS 16.0.1
+        빌드: WSL Ubuntu 24.04, devkitPro 그룹 아무거나
+        설치: FBI 4.5.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 어느 쪽인가
+      options:
+        - 3DS 빌드 / 실행
+        - pygame 쪽
+        - 문서 / README
+        - 설치 (FBI, QR)
+        - 모르겠음
+    validations:
+      required: true

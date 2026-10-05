@@ -10,6 +10,7 @@
 3ds/*.bnr
 3ds/*.rsf
 3ds/*.cia
+3ds/silence.wav
 *.pyc
 __pycache__/
 

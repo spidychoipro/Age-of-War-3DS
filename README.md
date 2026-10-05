@@ -1,3 +1,5 @@
+[English README](README.en.md) | [한국어 README](README.md)
+
 # Age of War 3DS
 
 Age of War를 닌텐도 3DS(카트리지와 devkitARM)용으로 다시 만든 2D 디펜스 게임.

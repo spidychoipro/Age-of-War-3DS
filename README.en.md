@@ -4,6 +4,27 @@
 
 A 2D defense game rebuilt for the Nintendo 3DS (cartridge build, devkitARM). Ported with C++/libctru, and a Python (pygame) reimplementation of the same pieces is kept in this repo too.
 
+> [!NOTE]
+> **An unofficial fan port, made by one person.** Not affiliated with the original developers or publishers; the original name is only used for attribution.
+>
+> The layout and the balance are a fair bit off from the original and it isn't finished, but it's playable start to finish.
+>
+> If you want it closer to the real game, see [CONTRIBUTING.md](CONTRIBUTING.md). What's missing is listed under [Differences from the original](#differences-from-the-original) below.
+
+## Differences from the original
+
+The balance tables (`3ds/source/data.h`) are the original's, and the UI does show all of them — 16 unit types, 15 turret types, 5 ages (Caveman → Medieval → Renaissance → WW2 → Future).
+
+What's not there yet:
+
+- Difficulty selection. The rules are in `sim.cpp` with three levels defined (harder ×1.3, impossible ×2.0), but `main.cpp` hardcodes `g_difficulty = 0`, so there's no way to pick one in-game.
+- Saving and replays. The repo is never touched and the CIA sets `SaveDataSize: 0K`, so progress isn't kept anywhere.
+- Music and sound effects. There is no audio code in `3ds/source/` at all.
+- Turret upgrades. Only slot expansion (`simAddExpansion`) exists.
+- The `pygame/` side. Just the data tables, so it doesn't run.
+
+If you know the original well, filling these in would be the most useful thing you could do. Where to start is in [CONTRIBUTING.md](CONTRIBUTING.md#making-it-closer-to-the-original).
+
 ## Install
 
 Prebuilt binaries are in the releases.
@@ -63,7 +84,7 @@ The code here is an independent implementation, not the original game code moved
 
 ## Status
 
-- 3DS: battle on the top screen, base HP / resources / age / production UI on the bottom. 6 unit types, 2 turret types, 3 ages.
+- 3DS: battle on the top screen, base HP / resources / age / production UI on the bottom. 16 unit types, 15 turret types, 5 ages. Playable through to the end.
 - Python: only `src/settings.py`, `src/gamedata.py` and assets. There's no entry point (`main.py`), so it doesn't run.
 
 ## Contributing

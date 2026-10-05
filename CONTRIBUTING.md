@@ -78,6 +78,65 @@ Unique ID가 `0x0003FF3F`(개발용)이라서 시그패치가 있는 커스텀 �
 
 텍스처는 `gfx/*.t3s`를 picasso로 굽고 `bin2o`로 링크함. 새 이미지 넣으려면 `.t3s`도 같이 갱신해야 함.
 
+## 원작에 더 가깝게 만들기
+
+이 저장소가 원작과 다른 채로 있는 게 사실임. 화면 배치와 밸런스가 꽤 다르고 다 완성된 건 아님. 그래도 시작부터 끝까지 플레이는 됨.
+
+그래서 여기가 기여할 자리. 밸런스 데이터(`3ds/source/data.h`)는 원작 기준표가 이미 들어있고 UI도 유닛 16종·포탑 15종·시대 5단계까지 전부 띄우고 있음. 원작의 뼈대는 대체로 맞춰져 있고 빠진 건 아래 것들.
+
+### Making it closer to the original
+
+*English summary of this section. The details below are in Korean.*
+
+This port genuinely isn't the original. The layout and balance are noticeably off and it isn't finished, though it does play through. So this is where contributions go.
+
+The balance tables in `3ds/source/data.h` are already the original's, and the UI shows all of them — 16 unit types, 15 turret types, 5 ages. Most of the original's structure is in place. What's missing:
+
+- **Difficulty selection.** The rules exist (`simInit(s, difficulty)` scales resources ×1.3 / ×2.0) but `main.cpp` hardcodes `g_difficulty = 0`. Needs a menu and a real source for that value.
+- **Saving / replays.** Never touches `repo`, and the CIA sets `SaveDataSize: 0K`. Needs `svch`/`fs` writes to the SD card, so the CIA save size has to grow first. Open an issue before starting.
+- **Music and sound effects.** No audio code in `3ds/source/` at all. libctru uses `ndsp` + `dsp`; see the `silence.wav` bit of `build-cia.sh` for the format.
+- **Turret upgrades.** Only slot expansion exists. `TURRET_DEFS` already has 15 entries, so it's the upgrade path that's missing.
+- **The `pygame/` side.** Data tables only, no scenes. Writing `main.py` (menu → battle → victory/defeat) is the first task there.
+
+Easiest first PR is the difficulty menu — small and self-contained. If you don't know the original well, pointing out where the numbers in `data.h` don't match what you remember is genuinely useful.
+
+### 빠져 있는 것
+
+**난이도 선택**
+
+규칙은 다 있음. `simInit(s, difficulty)`가 받는 값으로 자원을 1.3배(harder) 또는 2.0배(impossible) 깎고 실패 메시지도 다르게 나옴. 근데 `main.cpp`의 `g_difficulty = 0`이 하드코딩이라 플레이어가 고를 수단이 없음.
+
+따라 할 일은 두 가지. 시작 화면에 난이도 고르는 UI 만들고 `g_difficulty`를 거기서 받도록 바꾸는 것. 가장 작고 독립적이라 처음 Contributor 해보기 괜찮음.
+
+**세이브 / 리플레이**
+
+원작은 리플레이 시스템이 있고 진행 상황이 남음. 이쪽은 repo를 아예 안 씀. CIA 설정도 `build-cia.sh`에서 `SaveDataSize: 0K`라 저장 공간이 없음.
+
+libctru로 SD 카드에 직접 저장하려면 `svch`/`fs`를 써야 하고, 그러려면 CIA의 `SaveDataSize`를 늘려야 함. 설계가 좀 갈라서 이슈를 먼저 여는 게 나음.
+
+**음악과 효과음**
+
+`3ds/source/`에 오디오 코드가 아예 없음. libctru는 `ndsp` + `dsp`로 재생함. `build-cia.sh`가 `silence.wav`를 만들어 쓰고 있으니 포맷은 거기서 참고. 원작 음악은 용량이 커서 우선 배경음만 넣는 게 현실적일 듯.
+
+에셋은 출처를 밝혀야 하니까 서드파티 음원 쓰려면 이슈를 먼저 열 것. ([THIRD_PARTY.md](THIRD_PARTY.md) 참고)
+
+**포탑 업그레이드**
+
+지금은 `simAddExpansion`으로 슬롯만 늘어나고 업그레이드는 없음. 원작엔 포탑 레벨업과 회전이 있음. `TURRET_DEFS`에 15종이 이미 들어있으니까 업그레이드 경로만 설계하면 됨.
+
+**`pygame/` 쪽**
+
+`src/settings.py`랑 `src/gamedata.py`에 데이터 테이블만 있고 화면도 입력도 시뮬도 없음. 메뉴 → 전투 → 승리/패배를 잇는 진입점(`main.py`) 만드는 게 첫 과제. 원작을 옮기기보다 3DS 판을 베끼는 게 빠름.
+
+### 어디서부터 손대면 좋은가
+
+- **처음이라 3DS 빌드부터 익히고 싶음** → 문서 오타, 죽은 코드 제거 같은 것. 하드웨어 없이 빌드만으로 끝나서 안전함
+- **난이도 선택** → 위에서 말한 UI 추가. 작고 독립적이라 첫 PR로 좋음
+- **원작을 잘 아님** → `data.h`가 원작 기준이라, 원작 숫자와 다른 데가 보이면 이슈로 알려주면 좋음. 대조해서 틀린 부분 짚어주는 것도 기여임
+- **원작을 아주 잘 암** → 빠진 기능 순서대로. 첫 PR은 위 목록에서 하나만 고르는 게 나음. 세이브나 오디오 같은 큰 덩어리는 한 번에 다 하려 하면 리뷰가 빡세짐
+
+이쪽이 원작을 모르니까 뭐가 급한지는 기여자가 알려주는 거임. 다른 부분을 짚어주면 이슈로 남겨줘.
+
 ## 폰트
 
 `3ds/data/aow3ds_font.bcfnt`를 만든 스크립트가 이 저장소에 없음. 다시 만들려면 별도 BCFNT 변환 툴이 필요함.

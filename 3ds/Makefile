@@ -7,6 +7,8 @@ $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>dev
 endif
 
 TOPDIR ?= $(CURDIR)
+DEVKITPRO_FWD := $(subst \,/,$(DEVKITPRO))
+CTRULIB ?= $(DEVKITPRO_FWD)/libctru
 include $(DEVKITARM)/3ds_rules
 
 #---------------------------------------------------------------------------------
@@ -74,6 +76,7 @@ export HFILES	:=	$(addsuffix .h,$(subst .,_,$(BINFILES))) $(GFXFILES:.t3s=.h)
 
 export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			-I$(DEVKITPRO_FWD)/libctru/include \
 			-I$(CURDIR)/$(BUILD)
 
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
@@ -130,6 +133,12 @@ $(OUTPUT).elf	:	$(OFILES)
 
 #---------------------------------------------------------------------------------
 %.bcfnt.o	%_bcfnt.h :	%.bcfnt
+#---------------------------------------------------------------------------------
+	$(SILENTMSG) $(notdir $<)
+	$(call bin2o)
+
+#---------------------------------------------------------------------------------
+%.pcm.o	%_pcm.h :	%.pcm
 #---------------------------------------------------------------------------------
 	$(SILENTMSG) $(notdir $<)
 	$(call bin2o)

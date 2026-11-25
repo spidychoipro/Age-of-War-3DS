@@ -1,125 +1,115 @@
-// Core simulation, mirroring the fixed-step logic of the decompiled Unity scripts.
 #pragma once
 
 #include "data.h"
 
-static const int MAX_UNITS = 96;
-static const int MAX_TURRETS = 4;
-static const int MAX_BULLETS = 48;
-static const int WORLD_LENGTH = 20;   // Game.LEVEL_LENGTH
-static const float BASE_FRIENDLY_X = 0.0f;
-static const float BASE_ENEMY_X = (float)WORLD_LENGTH;
-static const float BASE_WIDTH = 2.0f;
-static const int TEAM_GOOD = 0;
-static const int TEAM_BAD = 1;
+// Simulation state for the original-style game loop. Kept POD-like so the
+// whole state can be reset with a single call and shared with the renderer.
+#define MAX_UNITS 160
+#define MAX_BULLETS 128
+#define MAX_QUEUE 8
+#define MAX_TURRETS 4
+#define MAX_MESSAGES 4
+
+#define SPECIAL_COOLDOWN 45.0f
+
+enum Side { TEAM_GOOD = 0, TEAM_BAD = 1 };
 
 struct Unit
 {
+	int id;
 	int team;
 	int typeId;
-	int id;
-	float x;
-	float health;
-	float maxHealth;
-	float dir;
-	float attackTimer;
-	float rangedTimer;
 	bool alive;
 	bool isBase;
+	float x;
+	float y;
+	float vx;
+	float dir;
+	float health;
+	float maxHealth;
+	float attackTimer;
+	float rangedTimer;
+	float stunTimer;
+	float poisonTimer;
+	float poisonDamage;
 	bool healing;
-};
-
-struct Turret
-{
-	int type;
-	int team;
-	int st;          // ticks since last shot
-	bool alive;
+	bool spawnedOffspring;
 };
 
 struct Bullet
 {
+	bool alive;
+	int team;
 	float x;
 	float y;
 	float vx;
 	float vy;
-	float targetX;
-	int team;
-	int damage;
-	bool alive;
+	float damage;
+	float life;
 };
 
 struct QueuedUnit
 {
-	int unitType;
-	float timeQueued;
+	int type;
 	float buildTime;
+	float timeQueued;
+};
+
+struct TurretSlot
+{
+	bool alive;
+	int type;
+	float cooldown;
 };
 
 struct Spell
 {
-	int kind;       // 0 none, 1 beam/bomb, 2 heal
-	float timer;
-	float tick;
+	int kind;
 	int team;
+	float timer;
 };
 
 struct Sim
 {
-	// economy
+	int difficulty;
+	int age;
+	int techLevel;
+	int enemyTechLevel;
 	float coins;
 	float exp;
-	float e_coins;
-	int age;
-	int difficulty;
 	bool paused;
 	bool gameOver;
-	float gameOverTimer;
-	int currentId;
-	bool isHack;
-
+	float elapsed;
+	float specialTimer;
+	float spawnCooldown[2];
+	float enemySpawnCooldown;
+	float enemySpecialTimer;
+	float enemyAgeTimer;
+	int enemyCash;
 	Unit units[MAX_UNITS];
 	int unitCount;
-	Turret turrets[2][MAX_TURRETS];
-	int expansionLevel[2];
 	Bullet bullets[MAX_BULLETS];
-
 	QueuedUnit queue[MAX_QUEUE];
 	int queueCount;
-
-	// enemy AI (EnemyAi.cs)
-	float techTimer;
-	float aiTimer;
-	float uTimer;
-	float uf;
-	float stepTime;
-	int unitLevel;
-	int turretLevel;
-	int techLevel;
-	int willCreateUnit;
-	bool checkAction;
-
-	float specialTimer;
-	int numGlobalSpellsUsed;
+	TurretSlot turrets[2][MAX_TURRETS];
+	int expansionLevel[2];
 	Spell spell;
-
-	// presentation
-	float shake;
-	float messageTimer;
 };
 
-extern char simMessages[8][64];
+extern const char* simMessages[MAX_MESSAGES];
 extern int simMessageCount;
 
+void simPushMessage(const char* msg);
+void simClearMessages();
 void simInit(Sim& s, int difficulty);
 void simStep(Sim& s, float dt);
-void simQueueUnit(Sim& s, int type);
-void simUpgradeAge(Sim& s);
-void simBuildTurret(Sim& s, int type);
-void simAddExpansion(Sim& s);
-void simCastSpecial(Sim& s);
 void simTogglePause(Sim& s);
-void simMessage(const char* text);
 
-Unit* simClosestEnemy(Sim& s, const Unit& u);
+bool simQueueUnit(Sim& s, int type);
+bool simUpgradeAge(Sim& s);
+bool simAddExpansion(Sim& s);
+bool simCastSpecial(Sim& s);
+bool simPlaceTurret(Sim& s, int slot, int type);
+bool simSellTurret(Sim& s, int slot);
+
 Unit* simBase(Sim& s, int team);

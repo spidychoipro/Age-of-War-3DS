@@ -7,21 +7,22 @@ A 2D defense game rebuilt for the Nintendo 3DS (cartridge build, devkitARM). Por
 > [!NOTE]
 > **An unofficial fan port, made by one person.** Not affiliated with the original developers or publishers; the original name is only used for attribution.
 >
-> The layout and the balance are a fair bit off from the original and it isn't finished, but it's playable start to finish.
+> The layout and the balance are now based on the original, but it still isn't finished and hardware testing isn't done yet. It's playable start to finish.
 >
-> If you want it closer to the real game, see [CONTRIBUTING.md](CONTRIBUTING.md). What's missing is listed under [Differences from the original](#differences-from-the-original) below.
+> If you want it closer to the real game, see [CONTRIBUTING.md](CONTRIBUTING.md). What's left is listed under [Differences from the original](#differences-from-the-original) below.
 
 ## Differences from the original
 
-The balance tables (`3ds/source/data.h`) are the original's, and the UI does show all of them — 16 unit types, 15 turret types, 5 ages (Caveman → Medieval → Renaissance → WW2 → Future).
+The balance tables (`3ds/source/data.h`) come from the decompiled Flash game — 16 unit types, 15 turret types, 5 ages, expansion costs 1000/3000/7500 and age XP 500/4000/14000/45000/200000. Unit, base, turret, UI and effect sprites are the original assets resized for the 3DS, and music and sound effects run through `ndsp`. The title screen lets you pick Normal/Hard/Impossible using the original multipliers (×1.3/×2.0). Turrets can be placed, sold and expanded, and the five age-specific specials are in.
 
-What's not there yet:
+The full decompilation is in [`reference/flash-decompiled/`](reference/flash-decompiled/). Sources and rights are recorded in [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
-- Difficulty selection. The rules are in `sim.cpp` with three levels defined (harder ×1.3, impossible ×2.0), but `main.cpp` hardcodes `g_difficulty = 0`, so there's no way to pick one in-game.
+Still missing:
+
 - Saving and replays. The repo is never touched and the CIA sets `SaveDataSize: 0K`, so progress isn't kept anywhere.
-- Music and sound effects. There is no audio code in `3ds/source/` at all.
-- Turret upgrades. Only slot expansion (`simAddExpansion`) exists.
+- Turret upgrades. Placement, selling and slot expansion work; per-turret upgrades don't.
 - The `pygame/` side. Just the data tables, so it doesn't run.
+- Hardware verification. Only the build and emulator/development checks are done.
 
 If you know the original well, filling these in would be the most useful thing you could do. Where to start is in [CONTRIBUTING.md](CONTRIBUTING.md#making-it-closer-to-the-original).
 
@@ -67,24 +68,33 @@ Controls and a longer build description are in [`3ds/README.md`](3ds/README.md).
 ## Folder structure
 
 ```
-3ds/       libctru (C++) port. This is the version that actually runs
-pygame/    Python reimplementation. Only the data tables are ported so far (WIP)
-install/   QR code PNG + a scan page in HTML
+3ds/                    libctru (C++) port. This is the version that actually runs
+   gfx/aow/             original sprites resized for the 3DS
+   data/*.pcm           original music/SFX (22050 Hz mono PCM16)
+   source/audio.cpp     ndsp playback
+reference/              full Flash decompilation (SWF, .as, PNG, MP3)
+pygame/                 Python reimplementation. Only the data tables are ported so far (WIP)
+install/                QR code PNG + a scan page in HTML
+tools/build-assets.ps1  regenerates the 3DS t3x/PCM assets from an original asset checkout
 ```
 
 ## Asset credits
 
-The background, base and unit card art and the font are resized and converted from the public release assets of [`OtemPsych/Age-of-War`](https://github.com/OtemPsych/Age-of-War) for 3DS. The original music and sound effects are not wired up yet because of file size.
+- Background, base, unit card art and font: resized from the public release assets of [`OtemPsych/Age-of-War`](https://github.com/OtemPsych/Age-of-War).
+- Unit/turret/UI/effect sprites and music/SFX: converted from the original assets in [`apiotrowski255/age-of-war`](https://github.com/apiotrowski255/age-of-war).
+- Flash decompilation: the Age of War folder from [`erupturatis/Decompiled-flash-games-archive`](https://github.com/erupturatis/Decompiled-flash-games-archive), kept as-is in `reference/flash-decompiled/`, including the original SWF.
 
-That source repo ships no license. So those assets are not covered by this repo's MIT license, and they sit here with their rights unresolved. Details in [`THIRD_PARTY.md`](THIRD_PARTY.md).
+Those sources have no license or unresolved rights. None of these assets are covered by this repo's MIT license, and they sit here with their rights unresolved. Details in [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
 The script that generated `3ds/data/aow3ds_font.bcfnt` isn't in this repo. Rebuilding it would need a separate BCFNT conversion tool.
 
-The code here is an independent implementation, not the original game code moved over. Build artifacts go to the releases only and are never committed.
+`tools/build-assets.ps1` takes an original asset checkout as `-Source` and regenerates `3ds/gfx/aow/`, `3ds/data/*.pcm` and `3ds/source/art_indices.h`. It needs `magick` and `ffmpeg`. The converted assets are committed, so you normally don't have to run it.
+
+The 3DS code here is an independent implementation, not the original game code moved over. `reference/` is only kept to compare behaviour against the original. Build artifacts go to the releases only and are never committed.
 
 ## Status
 
-- 3DS: battle on the top screen, base HP / resources / age / production UI on the bottom. 16 unit types, 15 turret types, 5 ages. Playable through to the end.
+- 3DS: original-sprite battle on the top screen, base HP / resources / age / production UI on the bottom. 16 unit types, 15 turret types, 5 ages, 3 difficulties, age specials and original audio. Playable through to the end.
 - Python: only `src/settings.py`, `src/gamedata.py` and assets. There's no entry point (`main.py`), so it doesn't run.
 
 ## Contributing

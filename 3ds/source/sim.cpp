@@ -1,822 +1,519 @@
 #include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
 
 #include "sim.h"
+#include "audio.h"
 
-#define MSG_MAX 8
-
-char simMessages[MSG_MAX][64];
+const char* simMessages[MAX_MESSAGES] = { "", "", "", "" };
 int simMessageCount = 0;
 
-static float s_messageTimer;
-
-// Base collider in Game.unity: size (3.799438, 3), offset (0.8997183, 0),
-// so the attackable edges sit at centre - 1.0 and centre + 2.7997.
-static const float BASE_EDGE_NEAR = -1.0f;
-static const float BASE_EDGE_FAR = 2.7997f;
-
-static float randf(void)
+namespace
 {
-	return (float)rand() / (float)RAND_MAX;
-}
+	const float SPAWN_X_MARGIN = 1.6f;
+	const float SPECIAL_TIMER = SPECIAL_COOLDOWN;
+	const float ENEMY_SPECIAL_FIRST = 28.0f;
 
-void simMessage(const char* text)
-{
-	snprintf(simMessages[0], sizeof(simMessages[0]), "%s", text);
-	simMessageCount = 1;
-	s_messageTimer = 2.0f;
-}
-
-Unit* simBase(Sim& s, int team)
-{
-	for (int i = 0; i < s.unitCount; i++)
+	void push(const char* msg)
 	{
-		if (s.units[i].isBase && s.units[i].team == team)
-			return &s.units[i];
+		for (int i = MAX_MESSAGES - 1; i > 0; i--)
+			simMessages[i] = simMessages[i - 1];
+		simMessages[0] = msg;
+		simMessageCount = simMessageCount < MAX_MESSAGES ? simMessageCount + 1 : MAX_MESSAGES;
 	}
-	return 0;
-}
 
-static Unit* spawnUnitRaw(Sim& s, int type, int team)
-{
-	if (s.unitCount >= MAX_UNITS)
-		return 0;
-
-	Unit& u = s.units[s.unitCount++];
-	const UnitDef& d = UNIT_DEFS[type];
-	memset(&u, 0, sizeof(u));
-	u.team = team;
-	u.typeId = type;
-	u.id = s.currentId++;
-	u.isBase = false;
-	u.alive = true;
-	u.dir = (team == TEAM_BAD) ? -1.0f : 1.0f;
-
-	// Game.spawnUnit: good team at baseFriendly.bounds.max.x - 0.2,
-	// bad team at baseEnemy.bounds.min.x + 0.2
-	if (team == TEAM_BAD)
-		u.x = BASE_ENEMY_X + BASE_EDGE_NEAR + 0.2f;
-	else
-		u.x = BASE_FRIENDLY_X + BASE_EDGE_FAR - 0.2f;
-
-	// Unit.Start: reward + difficulty scaling (harder 1.3, impossible 2.0)
-	float scale = 1.0f;
-	if (team == TEAM_BAD)
+	float difficultyHealth(int difficulty)
 	{
-		if (s.difficulty == 1) scale = 1.3f;
-		else if (s.difficulty == 2) scale = 2.0f;
+		return difficulty == 2 ? 2.0f : (difficulty == 1 ? 1.3f : 1.0f);
 	}
-	u.maxHealth = d.health * scale;
-	u.health = u.maxHealth;
-	return &u;
-}
 
-void simQueueUnit(Sim& s, int type)
-{
-	if (s.paused || s.gameOver)
-		return;
-	if (type < 0 || type > 15)
-		return;
-	if (s.queueCount >= MAX_QUEUE)
+	float difficultyDamage(int difficulty)
 	{
-		simMessage("Your production queue is full");
-		return;
+		return difficulty == 2 ? 1.6f : (difficulty == 1 ? 1.2f : 1.0f);
 	}
-	const UnitDef& d = UNIT_DEFS[type];
-	if (s.coins < d.cost && !s.isHack)
+
+	float difficultyIncome(int difficulty)
 	{
-		simMessage("You need more coins to train this unit");
-		return;
+		return difficulty == 2 ? 0.8f : (difficulty == 1 ? 0.9f : 1.0f);
 	}
-	if (!s.isHack)
-		s.coins -= d.cost;
-	QueuedUnit& q = s.queue[s.queueCount++];
-	q.unitType = type;
-	q.buildTime = (float)d.buildTime / 40.0f;
-	q.timeQueued = 0.0f;
-}
 
-Unit* simClosestEnemy(Sim& s, const Unit& u)
-{
-	Unit* best = 0;
-	float bestDist = 1e30f;
-	for (int i = 0; i < s.unitCount; i++)
+	float clamp(float v, float lo, float hi)
 	{
-		Unit& o = s.units[i];
-		if (!o.alive || o.team == u.team)
-			continue;
-		float d = fabsf(o.x - u.x);
-		if (d < bestDist)
-		{
-			bestDist = d;
-			best = &o;
-		}
+		return v < lo ? lo : (v > hi ? hi : v);
 	}
-	return best;
-}
 
-static void removeUnit(Sim& s, int index)
-{
-	s.units[index] = s.units[s.unitCount - 1];
-	s.unitCount--;
-}
-
-// Unit.damage: damage plus Random.value*2 jitter, coin/exp reward on death.
-static void damageUnit(Sim& s, Unit& target, float amount, bool jitter)
-{
-	if (!target.alive || target.health <= 0.0f)
-		return;
-
-	target.health -= amount + (jitter ? randf() * 2.0f : 0.0f);
-#ifdef SIM_TRACE
-	printf("trace: unit %d team %d (base=%d) x=%.2f health %.1f -> %.1f\n",
-	       target.id, target.team, target.isBase, target.x, target.maxHealth, target.health);
-#endif
-
-	if (target.health > 0.0f || target.isBase)
-		return;
-
-	target.alive = false;
-	int mreward = (int)((float)UNIT_DEFS[target.typeId].cost * 1.3f);
-	if (target.team == TEAM_BAD)
+	Unit* spawnUnit(Sim& s, int team, int type)
 	{
-		s.coins += mreward;
-		s.exp += 2.0f * (float)mreward;
-		if (s.exp > 999999.0f) s.exp = 999999.0f;
+		if (s.unitCount >= MAX_UNITS || type < 0 || type >= 16)
+			return NULL;
+		Unit& u = s.units[s.unitCount++];
+		memset(&u, 0, sizeof(u));
+		u.id = s.unitCount + (int)(s.elapsed * 1000.0f) % 1000;
+		u.team = team;
+		u.typeId = type;
+		u.alive = true;
+		u.dir = team == TEAM_GOOD ? 1.0f : -1.0f;
+		u.x = BASE_X[team] + u.dir * SPAWN_X_MARGIN;
+		u.y = GROUND_LEVEL;
+		const UnitDef& d = UNIT_DEFS[type];
+		float scale = team == TEAM_BAD ? difficultyHealth(s.difficulty) : 1.0f;
+		u.maxHealth = d.health * scale;
+		u.health = u.maxHealth;
+		return &u;
 	}
-	else
-	{
-		s.e_coins += mreward;
-		s.exp += (float)((int)(mreward / 2));
-		if (s.exp > 999999.0f) s.exp = 999999.0f;
-	}
-}
 
-static void spawnBullet(Sim& s, float x, float y, float vx, float vy, float targetX, int team, int damage)
-{
-	for (int i = 0; i < MAX_BULLETS; i++)
+	Unit* findBase(Sim& s, int team)
 	{
-		if (s.bullets[i].alive)
-			continue;
-		Bullet& b = s.bullets[i];
-		b.alive = true;
-		b.x = x;
-		b.y = y;
-		b.vx = vx;
-		b.vy = vy;
-		b.targetX = targetX;
+		for (int i = 0; i < s.unitCount; i++)
+			if (s.units[i].alive && s.units[i].isBase && s.units[i].team == team)
+				return &s.units[i];
+		return NULL;
+	}
+
+	void spawnBase(Sim& s, int team)
+	{
+		Unit& b = s.units[s.unitCount++];
+		memset(&b, 0, sizeof(b));
+		b.id = s.unitCount;
 		b.team = team;
-		b.damage = damage;
-		return;
-	}
-}
-
-// Base.addExpansion: the enemy never pays (Base.cs passes the coin check when
-// team == 1) and the level is capped at 3.
-static void enemyAddExpansion(Sim& s)
-{
-	if (s.expansionLevel[TEAM_BAD] < 3)
-		s.expansionLevel[TEAM_BAD]++;
-}
-
-// Base.destroyTurret
-static void enemyDestroyTurret(Sim& s, int pos)
-{
-	if (pos < 0 || pos >= MAX_TURRETS)
-		return;
-	Turret& t = s.turrets[TEAM_BAD][pos];
-	t.alive = false;
-	t.type = 0;
-	t.st = 0;
-}
-
-// Base.setUpTurret: replaces whatever occupied the slot, then FixUpExpansions
-// adds an expansion when the slot is beyond the current expansion level.
-static void enemySetUpTurret(Sim& s, int pos, int type)
-{
-	if (pos < 0 || pos >= MAX_TURRETS || type < 0 || type > 14)
-		return;
-	Turret& t = s.turrets[TEAM_BAD][pos];
-	t.type = type;
-	t.team = TEAM_BAD;
-	t.st = 0;
-	t.alive = true;
-	if (pos > s.expansionLevel[TEAM_BAD])
-		enemyAddExpansion(s);
-}
-
-// EnemyAi.update turret schedule (lines 91-191). Every branch is an exact
-// equality test on tech_timer, so these fire on precisely one tick.
-static void enemyTurretSchedule(Sim& s)
-{
-	switch (s.techLevel)
-	{
-	case 1:
-		if (s.techTimer == 1000.0f)
-		{
-			enemySetUpTurret(s, 0, 0);
-			s.turretLevel++;
-		}
-		else if (s.techTimer == 4000.0f)
-		{
-			enemySetUpTurret(s, 0, 1);
-			s.turretLevel++;
-		}
-		else if (s.techTimer == 6000.0f)
-		{
-			enemySetUpTurret(s, 0, 2);
-		}
-		break;
-
-	case 2:
-		if (s.techTimer == 1000.0f)
-		{
-			enemySetUpTurret(s, 0, 3);
-			s.turretLevel++;
-		}
-		else if (s.techTimer == 4000.0f)
-		{
-			enemyAddExpansion(s);
-			enemySetUpTurret(s, 0, 5);
-			s.turretLevel++;
-		}
-		else if (s.techTimer == 6000.0f)
-		{
-			enemySetUpTurret(s, 1, 4);
-		}
-		break;
-
-	case 3:
-		if (s.techTimer == 1000.0f)
-		{
-			enemySetUpTurret(s, 0, 6);
-			s.turretLevel++;
-		}
-		else if (s.techTimer == 4000.0f)
-		{
-			enemyAddExpansion(s);
-			enemySetUpTurret(s, 1, 6);
-			s.turretLevel++;
-		}
-		else if (s.techTimer == 6000.0f)
-		{
-			enemyDestroyTurret(s, 0);
-			enemyDestroyTurret(s, 1);
-			enemySetUpTurret(s, 2, 8);
-		}
-		break;
-
-	case 4:
-		if (s.techTimer == 5000.0f)
-		{
-			enemySetUpTurret(s, 0, 9);
-			s.turretLevel++;
-		}
-		else if (s.techTimer == 7000.0f)
-		{
-			enemyAddExpansion(s);
-			enemyDestroyTurret(s, 0);
-			enemyDestroyTurret(s, 2);
-			enemySetUpTurret(s, 1, 10);
-			s.turretLevel++;
-		}
-		break;
-
-	case 5:
-		if (s.techTimer == 5000.0f)
-		{
-			enemySetUpTurret(s, 0, 12);
-			s.turretLevel++;
-		}
-		else if (s.techTimer == 12000.0f)
-		{
-			enemyDestroyTurret(s, 0);
-			enemyDestroyTurret(s, 1);
-			enemyDestroyTurret(s, 2);
-			enemySetUpTurret(s, 1, 13);
-			s.turretLevel++;
-		}
-		else if (s.techTimer == 20000.0f)
-		{
-			enemyDestroyTurret(s, 0);
-			enemyDestroyTurret(s, 1);
-			enemyDestroyTurret(s, 2);
-			enemySetUpTurret(s, 2, 14);
-			s.turretLevel++;
-		}
-		break;
-	}
-}
-
-static void enemyAiUpdate(Sim& s)
-{
-	s.techTimer += 1.0f;
-	if (s.unitLevel == 1)
-	{
-		if (s.techTimer >= 1500.0f) s.unitLevel = 2;
-	}
-	else if (s.unitLevel == 2 && s.techTimer >= 5000.0f)
-	{
-		s.unitLevel = 3;
-	}
-	if (s.techTimer == 8000.0f && s.techLevel != 5)
-	{
-		s.techLevel++;
-		Unit* base = simBase(s, TEAM_BAD);
-		if (base)
-		{
-			base->health += BASE_AGE_HEALTH * (float)s.techLevel;
-			base->maxHealth += BASE_AGE_HEALTH * (float)s.techLevel;
-		}
-		s.unitLevel = 1;
-		s.techTimer = 0.0f;
+		b.typeId = 0;
+		b.alive = true;
+		b.isBase = true;
+		b.x = BASE_X[team];
+		b.y = GROUND_LEVEL;
+		b.dir = team == TEAM_GOOD ? 1.0f : -1.0f;
+		b.maxHealth = BASE_HEALTH[team];
+		b.health = b.maxHealth;
 	}
 
-	int num = 0;
-	s.aiTimer += 1.0f;
-	if (s.aiTimer > s.stepTime)
+	void fireBullet(Sim& s, int team, float x, float y, float tx, float ty,
+	                float damage, float speed)
 	{
-		num = (randf() < s.uf) ? 1 : 3;
-		s.aiTimer = 0.0f;
-		s.checkAction = true;
-	}
-
-	// getUOF(): number of living enemy units, capped at 6
-	int enemyCount = 0;
-	for (int i = 0; i < s.unitCount; i++)
-		if (s.units[i].alive && s.units[i].team == TEAM_BAD) enemyCount++;
-
-	if (s.checkAction && num == 1 && s.uTimer < -5.0f && enemyCount < 6)
-	{
-		int type = (int)floorf(randf() * (float)s.unitLevel + 1.0f);
-		type += (s.techLevel - 1) * 3;
-		s.willCreateUnit = type - 1;
-		// unit_level tops out at 3 and techLevel at 5, so the AI never
-		// reaches type 15 (the 150000-coin Super Soldier).
-		if (s.willCreateUnit > 14) s.willCreateUnit = 14;
-		if (s.willCreateUnit < 0) s.willCreateUnit = 0;
-		s.uTimer = (float)UNIT_DEFS[s.willCreateUnit].buildTime;
-		s.checkAction = false;
-	}
-	if (s.uTimer == 0.0f)
-	{
-		spawnUnitRaw(s, s.willCreateUnit, TEAM_BAD);
-	}
-	s.uTimer -= 1.0f;
-
-	enemyTurretSchedule(s);
-}
-
-// Unit.FixedUpdate distance metric: centre to centre, or to the nearest
-// collider edge when the target is a Base.
-static float targetDistance(const Unit& u, const Unit& target)
-{
-	if (!target.isBase)
-		return fabsf(target.x - u.x);
-	return fminf(fabsf(target.x + BASE_EDGE_FAR - u.x), fabsf(target.x + BASE_EDGE_NEAR - u.x));
-}
-
-// Unit.attack / Unit.rangedAttack measure to the target's collider edges
-// (bounds.max.x / bounds.min.x against our own centre) for every target type,
-// and allow twice the range when the target is a Base.
-static float attackDistance(const Unit& u, const Unit& target)
-{
-	float near, far;
-	if (target.isBase)
-	{
-		near = target.x + BASE_EDGE_NEAR;
-		far  = target.x + BASE_EDGE_FAR;
-	}
-	else
-	{
-		float half = UNIT_DEFS[target.typeId].width * 0.5f;
-		near = target.x - half;
-		far  = target.x + half;
-	}
-	return fminf(fabsf(far - u.x), fabsf(near - u.x));
-}
-
-// Unit.getClosestFriend: the single nearest ally spawned earlier (id < ours),
-// excluding Bases. Only that one unit can block us.
-static Unit* simClosestFriend(Sim& s, const Unit& u)
-{
-	Unit* best = 0;
-	float bestDist = 1e30f;
-	for (int i = 0; i < s.unitCount; i++)
-	{
-		Unit& f = s.units[i];
-		if (!f.alive || f.isBase || f.team != u.team || f.id >= u.id)
-			continue;
-		float dist = fabsf(f.x - u.x);
-		if (dist < bestDist)
+		for (int i = 0; i < MAX_BULLETS; i++)
 		{
-			bestDist = dist;
-			best = &f;
-		}
-	}
-	return best;
-}
-
-static void unitFixedUpdate(Sim& s, Unit& u, float dt)
-{
-	if (!u.alive || u.isBase)
-		return;
-
-	const UnitDef& d = UNIT_DEFS[u.typeId];
-
-	if (u.healing)
-	{
-		u.health += 1.0f;
-		if (u.health > u.maxHealth) u.health = u.maxHealth;
-	}
-
-	Unit* target = simClosestEnemy(s, u);
-	if (!target)
-		return;
-
-	float num = targetDistance(u, *target);
-	bool inMelee  = num <  d.meleeRange * P2U;   // flag2
-	bool inRanged = !inMelee && num < d.rangedRange * P2U;  // flag3
-
-	// flag: free to advance. Cleared inside melee reach...
-	bool canMove = !inMelee;
-	// ...or when the closest earlier ally overlaps our padded bounds
-	// (bounds.size.x + P2U * 25, so half of that is P2U * 12.5 on each side).
-	Unit* ally = simClosestFriend(s, u);
-	if (ally)
-	{
-		float myHalf     = d.width * 0.5f;
-		float allyHalf   = UNIT_DEFS[ally->typeId].width * 0.5f;
-		if (fabsf(ally->x - u.x) < myHalf + allyHalf + P2U * 12.5f)
-			canMove = false;
-	}
-
-	if (u.attackTimer > 0.0f) u.attackTimer -= dt;
-	if (u.rangedTimer > 0.0f) u.rangedTimer -= dt;
-
-	// if (flag && !flag2) Translate(direction * speed * P2U * dt * 40).
-	// inMelee already forces canMove false, so this is just canMove.
-	if (canMove)
-	{
-		u.x += u.dir * 0.7f * P2U * dt * 40.0f;
-		if (u.x < -2.0f) u.x = -2.0f;
-		if (u.x > (float)WORLD_LENGTH + 2.0f) u.x = (float)WORLD_LENGTH + 2.0f;
-	}
-
-	// attack() / rangedAttack() are animation events, so they resolve
-	// independently of movement: a unit in weapon range keeps walking
-	// ("WalkShoot") while it shoots.
-	float reach = attackDistance(u, *target);
-	if (inMelee)
-	{
-		float meleeReach = d.meleeRange * P2U * (target->isBase ? 2.0f : 1.0f);
-		if (u.attackTimer <= 0.0f && reach < meleeReach)
-		{
-			u.attackTimer = d.attackTime;
-			damageUnit(s, *target, d.meleeDamage, true);
-		}
-	}
-	else if (inRanged)
-	{
-		float rangedReach = d.rangedRange * P2U * (target->isBase ? 2.0f : 1.0f);
-		if (u.rangedTimer <= 0.0f && reach < rangedReach)
-		{
-			u.rangedTimer = d.rangedAttackTime > 0.0f ? d.rangedAttackTime : d.attackTime;
-			damageUnit(s, *target, d.rangedDamage, true);
-			spawnBullet(s, u.x, GROUND_LEVEL + d.height * 0.6f, u.dir * 4.0f, 0.0f, target->x, u.team, 0);
-		}
-	}
-}
-
-static void turretFixedUpdate(Sim& s, int team, Turret& t)
-{
-	if (!t.alive)
-		return;
-	const TurretDef& d = TURRET_DEFS[t.type];
-	float turretX = (team == TEAM_BAD) ? BASE_ENEMY_X - BASE_WIDTH * 0.5f
-	                                   : BASE_FRIENDLY_X + BASE_WIDTH * 0.5f;
-
-	Unit* best = 0;
-	float bestDist = 1e30f;
-	for (int i = 0; i < s.unitCount; i++)
-	{
-		Unit& u = s.units[i];
-		if (!u.alive || u.team == team)
-			continue;
-		float dist = fabsf(u.x - turretX);
-		if (dist < bestDist)
-		{
-			bestDist = dist;
-			best = &u;
+			Bullet& b = s.bullets[i];
+			if (b.alive)
+				continue;
+			float dx = tx - x;
+			float dy = ty - y;
+			float len = sqrtf(dx * dx + dy * dy);
+			if (len < 0.001f) len = 1.0f;
+			b.alive = true;
+			b.team = team;
+			b.x = x;
+			b.y = y;
+			b.vx = dx / len * speed;
+			b.vy = dy / len * speed;
+			b.damage = damage;
+			b.life = 2.5f;
+			return;
 		}
 	}
 
-	t.st++;
-	if (best && bestDist < (float)d.range * P2U && t.st >= d.shotSpeed)
+	void damageUnit(Sim& s, Unit& target, float amount, bool fromSpell)
 	{
-		t.st = 0;
-		damageUnit(s, *best, (float)d.damage, false);
-		float speed = 8.0f;
-		spawnBullet(s, turretX, GROUND_LEVEL + 1.0f,
-			(team == TEAM_BAD ? -speed : speed), 0.0f, best->x, team, 0);
-	}
-}
-
-static void bulletUpdate(Sim& s, float dt)
-{
-	for (int i = 0; i < MAX_BULLETS; i++)
-	{
-		Bullet& b = s.bullets[i];
-		if (!b.alive)
-			continue;
-		b.x += b.vx * dt;
-		if ((b.vx > 0.0f && b.x >= b.targetX) || (b.vx < 0.0f && b.x <= b.targetX))
-			b.alive = false;
-	}
-}
-
-static void spellUpdate(Sim& s, float dt)
-{
-	if (s.spell.kind == 0)
-		return;
-	s.spell.timer -= dt;
-	s.spell.tick -= dt;
-	if (s.spell.tick <= 0.0f)
-	{
-		s.spell.tick = 0.2f;
-		if (s.spell.kind == 2)
+		if (!target.alive)
+			return;
+		target.health -= amount;
+		if (target.health <= 0.0f)
 		{
-			for (int i = 0; i < s.unitCount; i++)
+			target.alive = false;
+			if (target.isBase)
 			{
-				Unit& u = s.units[i];
-				if (u.alive && u.team == s.spell.team)
+				s.gameOver = true;
+				push(target.team == TEAM_BAD ? "Enemy base destroyed!" : "Your base was destroyed!");
+				audioPlay(SFX_EXPLOSION);
+			}
+			else
+			{
+				if (target.team == TEAM_BAD)
 				{
-					u.healing = true;
-					u.health += 4.0f;
-					if (u.health > u.maxHealth) u.health = u.maxHealth;
+					const UnitDef& d = UNIT_DEFS[target.typeId];
+					s.coins += d.cost / 10.0f;
+					s.exp += d.health / 12.0f;
+				}
+				audioPlay(target.typeId % 3 == 2 ? SFX_DIE_TANK : SFX_DIE);
+			}
+		}
+		(void)fromSpell;
+	}
+
+	Unit* findTarget(Sim& s, const Unit& u, float range, float dx)
+	{
+		Unit* best = NULL;
+		float bestDx = range;
+		for (int i = 0; i < s.unitCount; i++)
+		{
+			Unit& t = s.units[i];
+			if (!t.alive || t.team == u.team)
+				continue;
+			float d = (t.x - u.x) * dx;
+			if (d < -0.4f || d > bestDx)
+				continue;
+			if (fabsf(t.x - u.x) > range + 0.3f)
+				continue;
+			best = &t;
+			bestDx = d;
+		}
+		return best;
+	}
+
+	void updateUnit(Sim& s, Unit& u, float dt)
+	{
+		if (!u.alive || u.isBase)
+			return;
+		const UnitDef& d = UNIT_DEFS[u.typeId];
+		if (u.stunTimer > 0.0f) u.stunTimer -= dt;
+		if (u.poisonTimer > 0.0f)
+		{
+			u.poisonTimer -= dt;
+			damageUnit(s, u, u.poisonDamage * dt, true);
+			if (!u.alive) return;
+		}
+		if (u.healing)
+		{
+			u.health = fminf(u.health + u.maxHealth * 0.06f * dt, u.maxHealth);
+			if (u.health >= u.maxHealth) u.healing = false;
+		}
+		if (u.attackTimer > 0.0f) u.attackTimer -= dt;
+		if (u.rangedTimer > 0.0f) u.rangedTimer -= dt;
+
+		Unit* enemy = findTarget(s, u, d.meleeRange, u.dir);
+		if (enemy && u.attackTimer <= 0.0f)
+		{
+			float damage = d.meleeDamage * (u.team == TEAM_BAD ? difficultyDamage(s.difficulty) : 1.0f);
+			damageUnit(s, *enemy, damage, false);
+			u.attackTimer = d.attackTime;
+			audioPlay(SFX_SWORD);
+			return;
+		}
+
+		Unit* ranged = findTarget(s, u, d.rangedRange, u.dir);
+		if (ranged && d.rangedDamage > 0 && u.rangedTimer <= 0.0f)
+		{
+			float damage = d.rangedDamage * (u.team == TEAM_BAD ? difficultyDamage(s.difficulty) : 1.0f);
+			fireBullet(s, u.team, u.x, u.y + 0.7f, ranged->x, ranged->y + 0.5f,
+			           damage, 7.0f + (float)u.typeId * 0.1f);
+			u.rangedTimer = d.attackTime * 1.2f;
+			audioPlay(u.typeId >= 12 ? SFX_FUTURE : (u.typeId >= 6 ? SFX_RANGE_MILTARY : SFX_RANGE_MEDIVAL));
+			return;
+		}
+
+		Unit* blocker = findTarget(s, u, 0.45f, u.dir);
+		if (!blocker)
+			u.x += u.dir * (0.9f + (u.typeId % 3) * 0.1f) * dt;
+
+		Unit* base = findBase(s, u.team == TEAM_GOOD ? TEAM_BAD : TEAM_GOOD);
+		if (base && fabsf(base->x - u.x) < d.meleeRange && u.attackTimer <= 0.0f)
+		{
+			float damage = d.meleeDamage * (u.team == TEAM_BAD ? difficultyDamage(s.difficulty) : 1.0f);
+			damageUnit(s, *base, damage, false);
+			u.attackTimer = d.attackTime;
+		}
+		u.x = clamp(u.x, 0.2f, 19.8f);
+	}
+
+	void updateBullets(Sim& s, float dt)
+	{
+		for (int i = 0; i < MAX_BULLETS; i++)
+		{
+			Bullet& b = s.bullets[i];
+			if (!b.alive) continue;
+			b.x += b.vx * dt;
+			b.y += b.vy * dt;
+			b.life -= dt;
+			if (b.life <= 0.0f || b.x < 0.0f || b.x > 20.0f || b.y < GROUND_LEVEL - 0.5f)
+			{
+				b.alive = false;
+				continue;
+			}
+			for (int j = 0; j < s.unitCount; j++)
+			{
+				Unit& u = s.units[j];
+				if (!u.alive || u.team == b.team) continue;
+				if (fabsf(u.x - b.x) < 0.4f && fabsf(u.y + 0.6f - b.y) < 0.8f)
+				{
+					damageUnit(s, u, b.damage, false);
+					b.alive = false;
+					audioPlay(SFX_HIT);
+					break;
 				}
 			}
 		}
-		else
+	}
+
+	void updateTurrets(Sim& s, float dt)
+	{
+		for (int team = 0; team < 2; team++)
+		{
+			Unit* base = findBase(s, team);
+			if (!base) continue;
+			for (int i = 0; i < MAX_TURRETS; i++)
+			{
+				TurretSlot& slot = s.turrets[team][i];
+				if (!slot.alive || slot.type < 0 || slot.type >= 15) continue;
+				const TurretDef& def = TURRET_DEFS[slot.type];
+				slot.cooldown -= dt;
+				Unit* target = NULL;
+				float bestD = def.range;
+				for (int j = 0; j < s.unitCount; j++)
+				{
+					Unit& u = s.units[j];
+					if (!u.alive || u.team == team) continue;
+					float d = fabsf(u.x - base->x);
+					if (d < bestD)
+					{
+						bestD = d;
+						target = &u;
+					}
+				}
+				if (!target || slot.cooldown > 0.0f) continue;
+				float dmg = def.damage * (team == TEAM_BAD ? difficultyDamage(s.difficulty) : 1.0f);
+				fireBullet(s, team, base->x, 3.4f, target->x, target->y + 0.5f, dmg, 9.0f);
+				slot.cooldown = def.cooldown;
+				audioPlay(SFX_TURRET);
+			}
+		}
+	}
+
+	void updateSpell(Sim& s, float dt)
+	{
+		if (s.spell.kind == 0) return;
+		s.spell.timer -= dt;
+		if (s.spell.timer > 0.0f) return;
+
+		int kind = s.spell.kind;
+		int team = s.spell.team;
+		if (kind == 1 || kind == 2 || kind == 4 || kind == 5)
+		{
+			float damage = (kind == 4 ? 220.0f : (kind == 5 ? 320.0f : 140.0f));
+			damage *= team == TEAM_BAD ? difficultyDamage(s.difficulty) : 1.0f;
+			for (int i = 0; i < s.unitCount; i++)
+			{
+				Unit& u = s.units[i];
+				if (u.alive && u.team != team)
+					damageUnit(s, u, damage, true);
+			}
+			audioPlay(SFX_EXPLOSION);
+		}
+		else if (kind == 3)
 		{
 			for (int i = 0; i < s.unitCount; i++)
 			{
 				Unit& u = s.units[i];
-				if (u.alive && !u.isBase && u.team != s.spell.team)
-					damageUnit(s, u, 45.0f, false);
+				if (u.alive && u.team == team && !u.isBase)
+					u.healing = true;
 			}
-		}
-	}
-	if (s.spell.timer <= 0.0f)
-	{
-		if (s.spell.kind == 2)
-		{
-			for (int i = 0; i < s.unitCount; i++)
-				s.units[i].healing = false;
+			audioPlay(SFX_SPECIAL);
 		}
 		s.spell.kind = 0;
 	}
-}
 
-void simCastSpecial(Sim& s)
-{
-	if (s.paused || s.gameOver)
-		return;
-	if (s.specialTimer < SPECIAL_COOLDOWN)
+	void updateEnemyAI(Sim& s, float dt)
 	{
-		simMessage("The special is not ready yet");
-		return;
-	}
-	s.specialTimer = 0.0f;
-	s.numGlobalSpellsUsed++;
-	s.spell.team = TEAM_GOOD;
-	// Base.special(): age 0 comets, 1 arrows, 2 heal, 3 bomber, 4 beam
-	s.spell.kind = (s.age == 2) ? 2 : 1;
-	s.spell.timer = (s.age == 2) ? 8.0f : 4.0f;
-	s.spell.tick = 0.0f;
-	simMessage("Special attack!");
-}
+		if (s.gameOver) return;
+		s.enemySpawnCooldown -= dt;
+		s.enemyAgeTimer -= dt;
+		s.enemySpecialTimer -= dt;
+		s.enemyCash += dt * (5.0f + s.enemyTechLevel * 4.0f) * difficultyIncome(s.difficulty);
 
-void simUpgradeAge(Sim& s)
-{
-	if (s.paused || s.gameOver)
-		return;
-	if (s.age == AGE_FUTURE)
-	{
-		simMessage("Already at the final age!");
-		return;
-	}
-	if (s.exp < (float)AGE_REQUIREMENTS[s.age + 1] && !s.isHack)
-	{
-		char buf[64];
-		snprintf(buf, sizeof(buf), "%d experience required to upgrade!", AGE_REQUIREMENTS[s.age + 1]);
-		simMessage(buf);
-		return;
-	}
-	s.age++;
-	Unit* base = simBase(s, TEAM_GOOD);
-	if (base)
-	{
-		base->health += BASE_AGE_HEALTH * (float)(s.age + 1);
-		base->maxHealth += BASE_AGE_HEALTH * (float)(s.age + 1);
-	}
-	simMessage(AGE_NAMES[s.age]);
-}
-
-void simBuildTurret(Sim& s, int type)
-{
-	if (s.paused || s.gameOver)
-		return;
-	if (type < 0 || type > 14)
-		return;
-	const TurretDef& d = TURRET_DEFS[type];
-	if (s.coins < d.cost && !s.isHack)
-	{
-		char buf[64];
-		snprintf(buf, sizeof(buf), "You need %d coins", d.cost);
-		simMessage(buf);
-		return;
-	}
-	int slot = -1;
-	for (int i = 0; i < MAX_TURRETS; i++)
-	{
-		if (i <= s.expansionLevel[TEAM_GOOD] && !s.turrets[TEAM_GOOD][i].alive)
+		if (s.enemyAgeTimer <= 0.0f && s.enemyTechLevel < s.age)
 		{
-			slot = i;
-			break;
+			s.enemyTechLevel++;
+			s.enemyAgeTimer = 20.0f;
+		}
+
+		if (s.enemySpecialTimer <= 0.0f)
+		{
+			s.spell.kind = 1 + ((s.enemyTechLevel - 1) % 5);
+			s.spell.team = TEAM_BAD;
+			s.spell.timer = 1.2f;
+			s.enemySpecialTimer = 45.0f + (3 - s.difficulty) * 8.0f;
+			push("Enemy used a special attack!");
+		}
+
+		if (s.enemySpawnCooldown <= 0.0f)
+		{
+			int maxType = s.enemyTechLevel * 3 + 2;
+			if (maxType > 14) maxType = 14;
+			int minType = s.enemyTechLevel > 0 ? (s.enemyTechLevel - 1) * 3 : 0;
+			int type = minType + ((int)(s.elapsed * 7.0f) % (maxType - minType + 1));
+			if (type >= 0 && type < 16)
+				spawnUnit(s, TEAM_BAD, type);
+			s.enemySpawnCooldown = fmaxf(1.2f, 4.0f - s.enemyTechLevel * 0.4f - s.difficulty * 0.3f);
+		}
+
+		// Enemy expands and builds turrets with the cash it earns.
+		if (s.expansionLevel[TEAM_BAD] < 3 && s.enemyCash > 1200.0f * (s.expansionLevel[TEAM_BAD] + 1))
+		{
+			s.enemyCash -= 1200.0f * (s.expansionLevel[TEAM_BAD] + 1);
+			s.expansionLevel[TEAM_BAD]++;
+		}
+		for (int i = 0; i <= s.expansionLevel[TEAM_BAD] && i < MAX_TURRETS; i++)
+		{
+			if (!s.turrets[TEAM_BAD][i].alive)
+			{
+				int type = s.enemyTechLevel * 3;
+				if (type > 14) type = 14;
+				s.turrets[TEAM_BAD][i].alive = true;
+				s.turrets[TEAM_BAD][i].type = type;
+				break;
+			}
 		}
 	}
-	if (slot < 0)
-	{
-		simMessage("No free turret slot (buy an expansion)");
-		return;
-	}
-	if (!s.isHack)
-		s.coins -= d.cost;
-	s.turrets[TEAM_GOOD][slot].type = type;
-	s.turrets[TEAM_GOOD][slot].team = TEAM_GOOD;
-	s.turrets[TEAM_GOOD][slot].st = 0;
-	s.turrets[TEAM_GOOD][slot].alive = true;
-	simMessage(d.name);
 }
 
-void simAddExpansion(Sim& s)
+void simPushMessage(const char* msg)
 {
-	if (s.paused || s.gameOver)
-		return;
-	if (s.expansionLevel[TEAM_GOOD] >= 3)
-	{
-		simMessage("All expansions are built");
-		return;
-	}
-	int cost = EXPANSION_COSTS[s.expansionLevel[TEAM_GOOD]];
-	if (s.coins < cost && !s.isHack)
-	{
-		char buf[64];
-		snprintf(buf, sizeof(buf), "%d coins required for a new slot", cost);
-		simMessage(buf);
-		return;
-	}
-	if (!s.isHack)
-		s.coins -= cost;
-	s.expansionLevel[TEAM_GOOD]++;
-	simMessage("New turret slot!");
+	push(msg);
 }
 
-void simTogglePause(Sim& s)
+void simClearMessages()
 {
-	if (s.gameOver)
-		return;
-	s.paused = !s.paused;
+	for (int i = 0; i < MAX_MESSAGES; i++) simMessages[i] = "";
+	simMessageCount = 0;
 }
 
 void simInit(Sim& s, int difficulty)
 {
 	memset(&s, 0, sizeof(s));
-	s.coins = (float)START_COINS;
-	s.exp = 0.0f;
-	s.age = 0;
-	s.difficulty = difficulty;
-	s.currentId = 0;
-
-	// bases
-	Unit& fb = s.units[s.unitCount++];
-	memset(&fb, 0, sizeof(fb));
-	fb.team = TEAM_GOOD;
-	fb.typeId = 0;
-	fb.id = s.currentId++;
-	fb.isBase = true;
-	fb.alive = true;
-	fb.x = BASE_FRIENDLY_X;
-	fb.dir = 1.0f;
-	fb.maxHealth = BASE_START_HEALTH;
-	fb.health = fb.maxHealth;
-
-	Unit& eb = s.units[s.unitCount++];
-	memset(&eb, 0, sizeof(eb));
-	eb.team = TEAM_BAD;
-	eb.typeId = 0;
-	eb.id = s.currentId++;
-	eb.isBase = true;
-	eb.alive = true;
-	eb.x = BASE_ENEMY_X;
-	eb.dir = -1.0f;
-	eb.maxHealth = BASE_START_HEALTH;
-	eb.health = eb.maxHealth;
-
-	// EnemyAi.init()
-	s.techTimer = 0.0f;
-	s.aiTimer = 0.0f;
-	s.uTimer = -1.0f;
-	s.uf = 0.3f;
-	s.stepTime = 40.0f;
-	s.checkAction = false;
-	s.unitLevel = 1;
-	s.turretLevel = 0;
+	s.difficulty = clamp(difficulty, 0, 2);
+	s.coins = 500.0f;
+	s.age = AGE_CAVE;
 	s.techLevel = 1;
-	s.willCreateUnit = 0;
-	s.specialTimer = SPECIAL_COOLDOWN;
+	s.enemyTechLevel = 1;
+	s.enemyCash = 200;
+	s.spawnCooldown[0] = 0.0f;
+	s.spawnCooldown[1] = 0.0f;
+	s.enemySpawnCooldown = 2.0f;
+	s.enemySpecialTimer = ENEMY_SPECIAL_FIRST;
+	s.enemyAgeTimer = 30.0f;
+	s.expansionLevel[TEAM_GOOD] = 0;
+	s.expansionLevel[TEAM_BAD] = 0;
 	s.spell.kind = 0;
+	simClearMessages();
+	spawnBase(s, TEAM_GOOD);
+	spawnBase(s, TEAM_BAD);
+	s.turrets[TEAM_GOOD][0].alive = true;
+	s.turrets[TEAM_GOOD][0].type = 0;
+	s.turrets[TEAM_BAD][0].alive = true;
+	s.turrets[TEAM_BAD][0].type = 0;
+}
+
+void simTogglePause(Sim& s)
+{
+	s.paused = !s.paused;
 }
 
 void simStep(Sim& s, float dt)
 {
-	if (s.paused || s.gameOver)
-		return;
+	if (s.paused || s.gameOver) return;
+	s.elapsed += dt;
+	s.coins += dt * (3.0f + s.age * 2.0f);
+	if (s.specialTimer < SPECIAL_COOLDOWN)
+		s.specialTimer = fminf(SPECIAL_COOLDOWN, s.specialTimer + dt);
 
-	enemyAiUpdate(s);
+	updateEnemyAI(s, dt);
+	updateSpell(s, dt);
+
+	for (int i = 0; i < s.queueCount;)
+	{
+		QueuedUnit& q = s.queue[i];
+		q.timeQueued += dt;
+		if (q.timeQueued >= q.buildTime)
+		{
+			spawnUnit(s, TEAM_GOOD, q.type);
+			for (int j = i; j + 1 < s.queueCount; j++) s.queue[j] = s.queue[j + 1];
+			s.queueCount--;
+		}
+		else
+			i++;
+	}
 
 	for (int i = 0; i < s.unitCount; i++)
-		unitFixedUpdate(s, s.units[i], dt);
+		updateUnit(s, s.units[i], dt);
+	updateBullets(s, dt);
+	updateTurrets(s, dt);
+}
 
-	for (int team = 0; team < 2; team++)
-		for (int i = 0; i < MAX_TURRETS; i++)
-			turretFixedUpdate(s, team, s.turrets[team][i]);
+bool simQueueUnit(Sim& s, int type)
+{
+	if (s.paused || s.gameOver || type < 0 || type >= 16 || s.queueCount >= MAX_QUEUE)
+		return false;
+	const UnitDef& d = UNIT_DEFS[type];
+	if (s.coins < d.cost) return false;
+	s.coins -= d.cost;
+	QueuedUnit& q = s.queue[s.queueCount++];
+	q.type = type;
+	q.buildTime = d.buildTime;
+	q.timeQueued = 0.0f;
+	return true;
+}
 
-	bulletUpdate(s, dt);
-	spellUpdate(s, dt);
+bool simUpgradeAge(Sim& s)
+{
+	if (s.paused || s.gameOver || s.age >= AGE_FUTURE || s.exp < AGE_XP[s.age])
+		return false;
+	s.exp -= AGE_XP[s.age];
+	s.age++;
+	push("New age reached!");
+	audioPlay(SFX_SWORD);
+	return true;
+}
 
-	Unit* fb = simBase(s, TEAM_GOOD);
-	Unit* eb = simBase(s, TEAM_BAD);
-	if (fb) fb->healing = false;
-	if (eb) eb->healing = false;
+bool simAddExpansion(Sim& s)
+{
+	int level = s.expansionLevel[TEAM_GOOD];
+	if (s.paused || s.gameOver || level >= 3 || s.coins < EXPANSION_COST[level])
+		return false;
+	s.coins -= EXPANSION_COST[level];
+	s.expansionLevel[TEAM_GOOD]++;
+	push("Turret slot added!");
+	return true;
+}
 
-	// Base.FixedUpdate
-	s.specialTimer += dt;
-	if (s.specialTimer > SPECIAL_COOLDOWN) s.specialTimer = SPECIAL_COOLDOWN;
+bool simCastSpecial(Sim& s)
+{
+	if (s.paused || s.gameOver || s.spell.kind != 0 || s.specialTimer < SPECIAL_TIMER)
+		return false;
+	s.spell.kind = 1 + s.age;
+	s.spell.team = TEAM_GOOD;
+	s.spell.timer = 1.2f;
+	s.specialTimer = 0.0f;
+	push("Special attack!");
+	audioPlay(SFX_SPECIAL);
+	return true;
+}
 
-	// Game.LateUpdate: production queue
-	if (s.queueCount > 0)
-	{
-		QueuedUnit& q = s.queue[0];
-		q.timeQueued += dt;
-		if (q.timeQueued > q.buildTime || s.isHack)
-		{
-			spawnUnitRaw(s, q.unitType, TEAM_GOOD);
-			for (int i = 0; i < s.queueCount - 1; i++)
-				s.queue[i] = s.queue[i + 1];
-			s.queueCount--;
-			if (s.queueCount > 0)
-				s.queue[0].timeQueued = 0.0f;
-		}
-	}
+bool simPlaceTurret(Sim& s, int slot, int type)
+{
+	if (s.paused || s.gameOver || slot < 0 || slot >= MAX_TURRETS || type < 0 || type >= 15)
+		return false;
+	if (slot > s.expansionLevel[TEAM_GOOD] || s.turrets[TEAM_GOOD][slot].alive)
+		return false;
+	if (s.coins < TURRET_DEFS[type].cost) return false;
+	s.coins -= TURRET_DEFS[type].cost;
+	s.turrets[TEAM_GOOD][slot].alive = true;
+	s.turrets[TEAM_GOOD][slot].type = type;
+	push("Turret built");
+	audioPlay(SFX_HIT);
+	return true;
+}
 
-	// Game.Update: win / lose
-	if (fb && eb)
-	{
-		if (fb->health <= 0.0f || eb->health <= 0.0f)
-		{
-			if (!s.gameOver)
-			{
-				s.gameOver = true;
-				s.gameOverTimer = 0.0f;
-				simMessage(eb->health <= 0.0f && fb->health > 0.0f ? "VICTORY!" : "DEFEAT!");
-			}
-		}
-	}
-	if (s.gameOver)
-		s.gameOverTimer += dt;
+bool simSellTurret(Sim& s, int slot)
+{
+	if (s.paused || s.gameOver || slot < 0 || slot >= MAX_TURRETS)
+		return false;
+	TurretSlot& t = s.turrets[TEAM_GOOD][slot];
+	if (!t.alive) return false;
+	s.coins += TURRET_DEFS[t.type].cost / 2;
+	t.alive = false;
+	t.type = 0;
+	push("Turret sold");
+	return true;
+}
 
-	// reap dead units
-	for (int i = s.unitCount - 1; i >= 0; i--)
-		if (!s.units[i].alive && !s.units[i].isBase)
-			removeUnit(s, i);
-
-	if (s.shake > 0.0f)
-	{
-		s.shake -= dt;
-		if (s.shake < 0.0f) s.shake = 0.0f;
-	}
-
-	if (s_messageTimer > 0.0f)
-	{
-		s_messageTimer -= dt;
-		if (s_messageTimer <= 0.0f)
-		{
-			simMessages[0][0] = 0;
-			simMessageCount = 0;
-		}
-	}
+Unit* simBase(Sim& s, int team)
+{
+	return findBase(s, team);
 }

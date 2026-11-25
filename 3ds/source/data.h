@@ -1,91 +1,89 @@
-// Game data extracted from the decompiled Age of War (PS Vita) project.
-//   Units:  Assets/Resources/units/*.prefab   (health, damage, ranges, collider size)
-//           Assets/Scripts/Assembly-CSharp/Game.cs (names, cost, buildTime)
-//   Turrets: Assets/Scene/Game.unity           (turrets[] TurretData array)
 #pragma once
+
+// Names, costs and progression values mirror the decompiled Flash game
+// (frame_13/DoAction.as and DoAction_3.as). The visuals are 3DS-sized, but the
+// economy and age curve are the original ones.
+#define AGE_CAVE 0
+#define AGE_KNIGHT 1
+#define AGE_MEDIVAL 2
+#define AGE_MILTARY 3
+#define AGE_FUTURE 4
+#define AGE_COUNT 5
+
+static const char* const AGE_NAMES[AGE_COUNT] =
+{
+	"Stone Age", "Bronze Age", "Middle Age", "Industrial Age", "Future"
+};
+
+// Required experience to advance from the indexed age to the next one.
+static const int AGE_XP[AGE_COUNT] = { 500, 4000, 14000, 45000, 200000 };
+static const int EXPANSION_COST[3] = { 1000, 3000, 7500 };
 
 struct UnitDef
 {
 	const char* name;
-	float health;
-	float meleeDamage;
-	float rangedDamage;
+	int cost;
+	int health;
+	int meleeDamage;
+	int rangedDamage;
 	float meleeRange;
 	float rangedRange;
 	float attackTime;
-	float rangedAttackTime;
-	int cost;
-	int buildTime;
-	float width;
-	float height;
+	float buildTime;
 };
 
+// The Flash game stores enemy stats separately; the player's troops use the
+// same values with the original per-age health/damage curve.
 static const UnitDef UNIT_DEFS[16] =
 {
-	{ "Clubman",         55.0f,  16.0f,   0.0f,  20.0f,   0.0f, 0.5f, 0.0f,     15,   40, 0.535f, 1.148f },
-	{ "Slingshot Man",   42.0f,  10.0f,   8.0f,  20.0f, 100.0f, 0.5f, 0.7f,     25,   40, 0.614f, 1.146f },
-	{ "Dino Rider",     160.0f,  40.0f,   0.0f,  45.0f,   0.0f, 0.5f, 0.0f,    100,  100, 1.961f, 1.487f },
-	{ "Swordman",       100.0f,  35.0f,   0.0f,  20.0f,   0.0f, 0.5f, 0.0f,     50,   70, 1.457f, 2.721f },
-	{ "Archer",          80.0f,  20.0f,   9.0f,  20.0f, 130.0f, 0.5f, 0.0f,     75,   50, 1.185f, 2.684f },
-	{ "Knight",         300.0f,  60.0f,   0.0f,  60.0f,   0.0f, 0.5f, 0.0f,    500,  100, 3.794f, 3.622f },
-	{ "Dueler",         200.0f,  79.0f,   0.0f,  25.0f,   0.0f, 0.5f, 0.0f,    200,  100, 0.744f, 1.287f },
-	{ "Mousquettere",   160.0f,  40.0f,  20.0f,  25.0f, 130.0f, 0.5f, 0.0f,    400,  100, 0.590f, 1.370f },
-	{ "Canoneer",       600.0f, 120.0f,   0.0f,  25.0f,   0.0f, 0.5f, 0.0f,   1000,  200, 0.643f, 1.360f },
-	{ "Melee Infantry", 350.0f, 100.0f,   0.0f,  25.0f,   0.0f, 0.5f, 0.0f,   1500,  100, 1.854f, 3.038f },
-	{ "Infantry",       300.0f,  60.0f,  30.0f,  25.0f, 130.0f, 0.5f, 0.0f,   2000,  100, 2.029f, 3.015f },
-	{ "Tank",          1200.0f, 300.0f,   0.0f, 100.0f,   0.0f, 0.5f, 0.0f,   7000,  300, 6.867f, 3.041f },
-	{ "God's Blade",   1000.0f, 250.0f,   0.0f,  40.0f,   0.0f, 0.5f, 0.0f,   5000,  100, 1.944f, 3.262f },
-	{ "Blaster",        800.0f, 130.0f,  80.0f,  40.0f, 130.0f, 0.5f, 0.0f,   6000,  100, 2.079f, 3.224f },
-	{ "War Machine",   3000.0f, 600.0f,   0.0f, 100.0f,   0.0f, 0.5f, 0.0f,  20000,  300, 6.365f, 3.143f },
-	{ "Super Soldier", 5000.0f, 400.0f, 400.0f,  40.0f, 150.0f, 0.5f, 0.0f, 150000,  100, 2.079f, 3.224f },
+	{ "Club man",          15,     55,   16,   0,   0.65f,  0.0f, 1.00f, 0.80f },
+	{ "Slingshot man",     25,     42,   10,   8,   0.65f, 3.20f, 1.30f, 0.80f },
+	{ "Dino rider",       100,    160,   40,   0,   0.75f,  0.0f, 1.10f, 2.00f },
+	{ "Sword man",         50,    110,   26,   0,   0.65f,  0.0f, 0.90f, 1.40f },
+	{ "Archer",            75,     84,   16,  18,   0.65f, 3.40f, 1.20f, 1.00f },
+	{ "Knight",           500,    340,   65,   0,   0.75f,  0.0f, 0.85f, 2.00f },
+	{ "Dueler",           200,    130,   22,  22,   0.70f, 3.00f, 0.85f, 2.00f },
+	{ "Musketeer",        400,    180,   30,  38,   0.70f, 4.00f, 1.25f, 2.00f },
+	{ "Cannoneer",       1000,    240,   20,  75,   0.70f, 4.20f, 1.60f, 4.00f },
+	{ "Melee Infantry",  1500,    480,  125,   0,   0.80f,  0.0f, 0.90f, 2.00f },
+	{ "Infantry",        2000,    400,   65,  70,   0.75f, 4.00f, 1.00f, 2.00f },
+	{ "Tank",            7000,   1400,  200, 120,   0.90f, 4.50f, 1.30f, 6.00f },
+	{ "God's Blade",     5000,    800,  180,   0,   0.80f,  0.0f, 0.70f, 2.00f },
+	{ "Blaster",         6000,    560,   60, 140,   0.75f, 4.80f, 1.10f, 2.00f },
+	{ "War machine",    20000,   3600,  450, 300,   1.00f, 5.00f, 1.30f, 6.00f },
+	{ "Super Soldier", 150000,  10000, 1000, 800,   1.00f, 5.50f, 0.60f, 2.00f },
 };
 
 struct TurretDef
 {
 	const char* name;
-	int shotSpeed;
-	int bulletId;
-	int damage;
-	int range;
 	int cost;
+	float cooldown;
+	int damage;
+	float range;
 };
 
+// Flash TU/TS tables.
 static const TurretDef TURRET_DEFS[15] =
 {
-	{ "Rock Slignshot",   60,  1,  12, 350,   100 },
-	{ "Egg Automatic",    11,  2,   5, 300,   200 },
-	{ "Primitive Catapult",70, 3,  25, 400,   500 },
-	{ "Catapult",          70,  3,  40, 400,   500 },
-	{ "Fire Catapult",     70,  4,  50, 400,   750 },
-	{ "Oil",              100,  5,   4, 300,  1000 },
-	{ "Small Canon",       70,  6,  30, 500,  1500 },
-	{ "Large Canon",       70,  6,  70, 500,  3000 },
-	{ "Explosives Canon",  70,  7, 100, 500,  6000 },
-	{ "Single Turret",     40,  8,  70, 500,  7000 },
-	{ "Rocket Turret",     50,  9, 100, 500,  9000 },
-	{ "Double Turret",     22,  8,  60, 500, 14000 },
-	{ "Titanium Shooter",  40, 10, 100, 400, 24000 },
-	{ "LazerCanon",        10, 11,  40, 500, 40000 },
-	{ "IonRay",            10, 12,  60, 500,100000 },
+	{ "Rock slingshot",      100,    0.60f,  12, 3.5f },
+	{ "Egg automatic",       200,    0.22f,   5, 3.0f },
+	{ "Primitive catapult",  500,    1.40f,  25, 4.0f },
+	{ "Catapult",            500,    1.40f,  40, 4.0f },
+	{ "Fire catapult",       750,    1.40f,  50, 4.0f },
+	{ "Oil",                1000,    2.00f,   4, 3.0f },
+	{ "Small cannon",       1500,    1.40f,  30, 5.0f },
+	{ "Large cannon",       3000,    1.40f,  70, 5.0f },
+	{ "Explosives cannon",  6000,    1.40f, 100, 5.0f },
+	{ "Single turret",      7000,    0.80f,  70, 5.0f },
+	{ "Rocket turret",      9000,    1.00f, 100, 5.0f },
+	{ "Double turret",     14000,    0.44f,  60, 5.0f },
+	{ "Titanium shooter",  24000,    0.80f, 100, 4.0f },
+	{ "Laser cannon",      40000,    0.20f,  40, 5.0f },
+	{ "Ion ray",          100000,    0.20f,  60, 5.0f },
 };
 
-// Base.ageRequirements
-static const int AGE_REQUIREMENTS[5] = { 500, 4000, 14000, 45000, 200000 };
-
-// Base.addExpansion
-static const int EXPANSION_COSTS[3] = { 1000, 3000, 7500 };
-
-static const char* const AGE_NAMES[5] =
-{
-	"Caveman", "Medieval", "Renaissance", "WW2", "Future"
-};
-
-// Game.cs constants
-static const float P2U = 0.025f;          // pixel -> world unit
-static const float GROUND_LEVEL = -3.85f;
-static const float BASE_START_HEALTH = 500.0f;
-static const float BASE_AGE_HEALTH = 300.0f;
-static const float SPECIAL_COOLDOWN = 50.0f;
-static const int START_COINS = 175;
-static const int MAX_QUEUE = 5;
-static const int AGE_FUTURE = 4;
+static const float P2U = 0.45f;
+static const float GROUND_LEVEL = 2.0f;
+static const float BASE_X[2] = { 1.0f, 18.0f };
+static const float BASE_HEALTH[2] = { 8000.0f, 8000.0f };

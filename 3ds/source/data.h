@@ -1,8 +1,10 @@
 #pragma once
 
-// Names, costs and progression values mirror the decompiled Flash game
-// (frame_13/DoAction.as and DoAction_3.as). The visuals are 3DS-sized, but the
-// economy and age curve are the original ones.
+// Source: Flash frame_13/DoAction.as, DefineSprite_699_ennemy and SWF header.
+// One simulation unit is 50 original Flash pixels; the SWF runs at 40 fps.
+static const float FLASH_FPS = 40.0f;
+static const float FLASH_DT = 1.0f / FLASH_FPS;
+static const float FLASH_PIXEL = 1.0f / 50.0f;
 #define AGE_CAVE 0
 #define AGE_KNIGHT 1
 #define AGE_MEDIVAL 2
@@ -12,7 +14,7 @@
 
 static const char* const AGE_NAMES[AGE_COUNT] =
 {
-	"Stone Age", "Bronze Age", "Middle Age", "Industrial Age", "Future"
+	"Stone Age", "Medieval Age", "Renaissance", "Modern Age", "Future"
 };
 
 // SWF EV = [4000, 14000, 45000, 200000]; indexed by the current age.
@@ -28,30 +30,54 @@ struct UnitDef
 	int rangedDamage;
 	float meleeRange;
 	float rangedRange;
-	float attackTime;
+	float attackTime; // melee animation cycle (first variant)
 	float buildTime;
 };
 
-// The Flash game stores enemy stats separately; the player's troops use the
-// same values with the original per-age health/damage curve.
+// ES is shared by both sides; only enemy units receive difficulty scaling.
 static const UnitDef UNIT_DEFS[16] =
 {
-	{ "Club man",          15,     55,   16,   0,   0.65f,  0.0f, 1.00f, 0.80f },
-	{ "Slingshot man",     25,     42,   10,   8,   0.65f, 3.20f, 1.30f, 0.80f },
-	{ "Dino rider",       100,    160,   40,   0,   0.75f,  0.0f, 1.10f, 2.00f },
-	{ "Sword man",         50,    110,   26,   0,   0.65f,  0.0f, 0.90f, 1.40f },
-	{ "Archer",            75,     84,   16,  18,   0.65f, 3.40f, 1.20f, 1.00f },
-	{ "Knight",           500,    340,   65,   0,   0.75f,  0.0f, 0.85f, 2.00f },
-	{ "Dueler",           200,    130,   22,  22,   0.70f, 3.00f, 0.85f, 2.00f },
-	{ "Musketeer",        400,    180,   30,  38,   0.70f, 4.00f, 1.25f, 2.00f },
-	{ "Cannoneer",       1000,    240,   20,  75,   0.70f, 4.20f, 1.60f, 4.00f },
-	{ "Melee Infantry",  1500,    480,  125,   0,   0.80f,  0.0f, 0.90f, 2.00f },
-	{ "Infantry",        2000,    400,   65,  70,   0.75f, 4.00f, 1.00f, 2.00f },
-	{ "Tank",            7000,   1400,  200, 120,   0.90f, 4.50f, 1.30f, 6.00f },
-	{ "God's Blade",     5000,    800,  180,   0,   0.80f,  0.0f, 0.70f, 2.00f },
-	{ "Blaster",         6000,    560,   60, 140,   0.75f, 4.80f, 1.10f, 2.00f },
-	{ "War machine",    20000,   3600,  450, 300,   1.00f, 5.00f, 1.30f, 6.00f },
-	{ "Super Soldier", 150000,  10000, 1000, 800,   1.00f, 5.50f, 0.60f, 2.00f },
+	{ "Club man",          15,   55,  16,   0, 0.4f, 0.0f, 40/FLASH_FPS,  40/FLASH_FPS },
+	{ "Slingshot man",     25,   42,  10,   8, 0.4f, 2.0f, 40/FLASH_FPS,  40/FLASH_FPS },
+	{ "Dino rider",       100,  160,  40,   0, 0.9f, 0.0f, 45/FLASH_FPS, 100/FLASH_FPS },
+	{ "Sword man",         50,  100,  35,   0, 0.4f, 0.0f, 48/FLASH_FPS,  70/FLASH_FPS },
+	{ "Archer",            75,   80,  20,   9, 0.4f, 2.6f, 48/FLASH_FPS,  50/FLASH_FPS },
+	{ "Knight",           500,  300,  60,   0, 1.2f, 0.0f, 52/FLASH_FPS, 100/FLASH_FPS },
+	{ "Dueler",           200,  200,  79,   0, 0.5f, 0.0f, 37/FLASH_FPS, 100/FLASH_FPS },
+	{ "Musketeer",        400,  160,  40,  20, 0.5f, 2.6f, 46/FLASH_FPS, 100/FLASH_FPS },
+	{ "Cannoneer",       1000,  600, 120,   0, 0.5f, 0.0f, 78/FLASH_FPS, 200/FLASH_FPS },
+	{ "Melee Infantry",  1500,  350, 100,   0, 0.5f, 0.0f, 30/FLASH_FPS, 100/FLASH_FPS },
+	{ "Infantry",        2000,  300,  60,  30, 0.5f, 2.6f, 21/FLASH_FPS, 100/FLASH_FPS },
+	{ "Tank",            7000, 1200, 300,   0, 2.0f, 0.0f, 63/FLASH_FPS, 300/FLASH_FPS },
+	{ "God's Blade",     5000, 1000, 250,   0, 0.8f, 0.0f, 37/FLASH_FPS, 100/FLASH_FPS },
+	{ "Blaster",         6000,  800, 130,  80, 0.8f, 2.6f, 32/FLASH_FPS, 100/FLASH_FPS },
+	{ "War machine",    20000, 3000, 600,   0, 2.0f, 0.0f, 90/FLASH_FPS, 300/FLASH_FPS },
+	{ "Super Soldier", 150000, 4000, 400, 400, 0.8f, 3.0f, 40/FLASH_FPS, 100/FLASH_FPS },
+};
+
+// Hitzone widths/heights in Flash pixels, from DefineSprite_695.
+static const float UNIT_WIDTH[16] = {31.6f,31.6f,81.4f,31.6f,31.6f,98.4f,33.5f,33.5f,33.5f,33.5f,33.5f,173.5f,44.5f,44.5f,116.5f,44.5f};
+static const float UNIT_HEIGHT[16] = {44.3f,44.3f,62.3f,44.3f,44.3f,69.0f,51.3f,51.3f,51.3f,51.3f,51.3f,57.3f,69.05f,69.05f,57.05f,69.05f};
+
+struct AttackCycle { int hit; int length; int alternateHit; int alternateLength; };
+// Hit frame and loop length, including the random attack1/attack2 timelines.
+static const AttackCycle MELEE_CYCLES[16] = {
+	{20,40,0,0},{20,40,0,0},{21,45,0,0},{33,48,28,51},
+	{38,48,31,51},{23,52,0,0},{19,37,25,47},{13,46,0,0},
+	{27,78,0,0},{14,30,0,0},{7,21,0,0},{30,63,0,0},
+	{23,37,0,0},{21,32,13,25},{13,90,0,0},{21,32,13,25}
+};
+static const AttackCycle SHOOT_CYCLES[16] = {
+	{0,0,0,0},{26,32,0,0},{0,0,0,0},{0,0,0,0},
+	{15,40,0,0},{0,0,0,0},{0,0,0,0},{13,46,0,0},
+	{0,0,0,0},{0,0,0,0},{7,21,0,0},{0,0,0,0},
+	{0,0,0,0},{6,14,0,0},{0,0,0,0},{6,14,0,0}
+};
+static const AttackCycle SHOOT_WALK_CYCLES[16] = {
+	{0,0,0,0},{30,43,0,0},{0,0,0,0},{0,0,0,0},
+	{16,40,0,0},{0,0,0,0},{0,0,0,0},{1,48,0,0},
+	{0,0,0,0},{0,0,0,0},{3,48,0,0},{0,0,0,0},
+	{0,0,0,0},{21,38,0,0},{0,0,0,0},{21,38,0,0}
 };
 
 struct TurretDef
@@ -66,26 +92,28 @@ struct TurretDef
 // Flash TU/TS tables.
 static const TurretDef TURRET_DEFS[15] =
 {
-	{ "Rock slingshot",      100,    0.60f,  12, 3.5f },
-	{ "Egg automatic",       200,    0.22f,   5, 3.0f },
-	{ "Primitive catapult",  500,    1.40f,  25, 4.0f },
-	{ "Catapult",            500,    1.40f,  40, 4.0f },
-	{ "Fire catapult",       750,    1.40f,  50, 4.0f },
-	{ "Oil",                1000,    2.00f,   4, 3.0f },
-	{ "Small cannon",       1500,    1.40f,  30, 5.0f },
-	{ "Large cannon",       3000,    1.40f,  70, 5.0f },
-	{ "Explosives cannon",  6000,    1.40f, 100, 5.0f },
-	{ "Single turret",      7000,    0.80f,  70, 5.0f },
-	{ "Rocket turret",      9000,    1.00f, 100, 5.0f },
-	{ "Double turret",     14000,    0.44f,  60, 5.0f },
-	{ "Titanium shooter",  24000,    0.80f, 100, 4.0f },
-	{ "Laser cannon",      40000,    0.20f,  40, 5.0f },
-	{ "Ion ray",          100000,    0.20f,  60, 5.0f },
+	{ "Rock slingshot",      100,    30/FLASH_FPS,  12, 7.0f },
+	{ "Egg automatic",       200,    11/FLASH_FPS,   5, 6.0f },
+	{ "Primitive catapult",  500,    70/FLASH_FPS,  25, 8.0f },
+	{ "Catapult",            500,    70/FLASH_FPS,  40, 8.0f },
+	{ "Fire catapult",       750,    70/FLASH_FPS,  50, 8.0f },
+	{ "Oil",                1000,   100/FLASH_FPS,   4, 6.0f },
+	{ "Small cannon",       1500,    70/FLASH_FPS,  30, 10.0f },
+	{ "Large cannon",       3000,    70/FLASH_FPS,  70, 10.0f },
+	{ "Explosives cannon",  6000,    70/FLASH_FPS, 100, 10.0f },
+	{ "Single turret",      7000,    40/FLASH_FPS,  70, 10.0f },
+	{ "Rocket turret",      9000,    50/FLASH_FPS, 100, 10.0f },
+	{ "Double turret",     14000,    22/FLASH_FPS,  60, 10.0f },
+	{ "Titanium shooter",  24000,    40/FLASH_FPS, 100, 8.0f },
+	{ "Laser cannon",      40000,    10/FLASH_FPS,  40, 10.0f },
+	{ "Ion ray",          100000,    10/FLASH_FPS,  60, 10.0f },
 };
+static const int TURRET_BULLET[15] = {1,2,3,3,4,5,6,6,7,8,9,8,12,10,11};
 
 static const float P2U = 0.45f;
 static const float GROUND_LEVEL = 2.0f;
-static const float BASE_X[2] = { 1.0f, 18.0f };
+static const float BASE_X[2] = { 1.0f, 19.0f };
+static const float SPAWN_X[2] = { 3.0f, 17.2f };
 // The SWF starts both bases at 500 and adds 300 * new age on every evolution.
 static const float BASE_HEALTH[2] = { 500.0f, 500.0f };
 static const float BASE_HEALTH_PER_AGE = 300.0f;

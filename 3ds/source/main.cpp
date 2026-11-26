@@ -10,20 +10,22 @@
 #include "sim.h"
 #include "audio.h"
 #include "art_indices.h"
+#include "flash_art.h"
 #include "background_t3x.h"
 #include "aow_t3x.h"
+#include "flash_unit_sheets.h"
 #include "aow3ds_font_bcfnt.h"
 
 #define SCRW 320.0f
 #define SCRH 240.0f
 #define FIELDW 400.0f
-// The SWF battlefield runs from x=50 to x=950 with bases at the two ends.
-// The 3DS port uses 20 simulation units for that span; only a 400 px window
-// is visible at once, so the view scrolls with the circle pad / ZL / ZR.
-#define PX_PER_UNIT 42.0f
-#define FIELD_ORIGIN 40.0f
-#define WORLD_W (FIELD_ORIGIN + 20.0f * PX_PER_UNIT + 40.0f)
+// Original 650px viewport, 1000px world. Match the original camera span.
+#define FLASH_SCALE (400.0f / 650.0f)
+#define PX_PER_UNIT (50.0f * FLASH_SCALE)
+#define FIELD_ORIGIN 0.0f
+#define WORLD_W (1000.0f * FLASH_SCALE)
 #define CAMERA_MAX (WORLD_W - FIELDW)
+#define FIELD_GROUND 210.0f
 
 static C2D_TextBuf g_textBuf;
 static C2D_Text g_text;
@@ -32,8 +34,10 @@ static C3D_RenderTarget* g_bottom;
 static C3D_RenderTarget* g_top;
 static C2D_SpriteSheet g_backgroundSheet;
 static C2D_SpriteSheet g_artSheet;
+static C2D_SpriteSheet g_unitSheets[FLASH_SHEET_COUNT];
 static C2D_Image g_backgroundImage;
 static C2D_Image g_art[A_COUNT];
+static C2D_Image g_unitImages[FLASH_ART_COUNT];
 
 static bool g_consoleUp = false;
 static Sim g_sim;
@@ -53,7 +57,7 @@ static unsigned g_fpsFrames = 0;
 static unsigned g_fpsTick = 0;
 static float g_sfxCooldown = 0.0f;
 static float g_cameraX = 0.0f;
-static const float FIXED_DT = 1.0f / 50.0f;
+static const float FIXED_DT = FLASH_DT;
 
 static float clampf(float v, float lo, float hi)
 {
@@ -146,6 +150,8 @@ static int unitKind(int type)
 }
 
 #define ART_U(age, kind) ((age) * 24 + (kind) * 8)
+#define ART_BASE(age) (A_BASE_0 + (age) * 4)
+#define ART_TURRET(type) (A_TURRET_0_0 + ((type) / 3) * 4 + (type) % 3)
 
 static void noteDamage(Unit& u, float dt)
 {
@@ -182,16 +188,13 @@ static void drawBattlefield(const Sim& s)
 {
 	if (g_backgroundImage.tex)
 	{
-		float offset = fmodf(g_cameraX, FIELDW);
-		if (offset < 0.0f) offset += FIELDW;
-		C2D_DrawImageAt(g_backgroundImage, -offset, 0.0f, 0.0f);
-		C2D_DrawImageAt(g_backgroundImage, FIELDW - offset, 0.0f, 0.0f);
+		C2D_DrawImageAt(g_backgroundImage, -g_cameraX-20.0f*FLASH_SCALE,
+			FIELD_GROUND-421.0f*FLASH_SCALE, 0.0f);
 	}
 	else
 		C2D_DrawRectSolid(0.0f, 0.0f, 0.0f, FIELDW, SCRH, C_PANEL);
 
 	// The original game's ground line is the visual anchor for every sprite.
-	C2D_DrawRectSolid(0.0f, 140.0f, 0.0f, FIELDW, 1.0f, C2D_Color32(0x30, 0x22, 0x14, 0x80));
 	if (s.age > 0)
 	{
 		char buf[24];
@@ -209,25 +212,28 @@ static void drawBases(const Sim& s)
 			continue;
 		bool friendly = b.team == TEAM_GOOD;
 		float cx = wx(b.x);
-		int artBase = A_BASE_0 + (friendly ? s.age : (s.techLevel > 4 ? 4 : s.techLevel - 1));
-		drawSprite(artBase, cx - 28.0f, 94.0f, 56.0f, 48.0f, !friendly);
-		drawHealthBar(cx - 26.0f, 88.0f, 52.0f, b.health / b.maxHealth);
+		int artBase = ART_BASE(friendly ? s.age : s.enemyTechLevel - 1);
+		drawSprite(artBase, cx - 28.0f, FIELD_GROUND-48.0f, 56.0f, 48.0f, !friendly);
+		drawHealthBar(cx - 26.0f, FIELD_GROUND-54.0f, 52.0f, b.health / b.maxHealth);
 
-		int placed = 0;
 		for (int t = 0; t < MAX_TURRETS; t++)
 		{
 			if (!s.turrets[b.team][t].alive)
 				continue;
-			int ta = A_TURRET_0_0 + s.turrets[b.team][t].type;
-			float tx = cx - 20.0f + (float)placed * 13.0f;
-			drawSprite(ta, tx, 80.0f, 24.0f, 24.0f, !friendly);
-			placed++;
+			int ta = ART_TURRET(s.turrets[b.team][t].type);
+			float tx = cx - 12.0f;
+			static const float slotHeight[4] = {80,125,172,220};
+			float ty = FIELD_GROUND-slotHeight[t]*FLASH_SCALE-12.0f;
+			const C2D_Image& gun=g_art[ta];
+			float angle=-s.turrets[b.team][t].rotation;
+			C2D_DrawImageAtRotated(gun,tx+12.0f,ty+12.0f,0.0f,angle,NULL,
+				24.0f/gun.subtex->width,(friendly ? 24.0f : -24.0f)/gun.subtex->height);
 		}
 		for (int e = 0; e <= s.expansionLevel[b.team] && e < MAX_TURRETS; e++)
 		{
 			if (s.turrets[b.team][e].alive)
 				continue;
-			C2D_DrawRectSolid(cx - 18.0f + (float)e * 13.0f, 88.0f, 0.0f, 10.0f, 6.0f,
+			C2D_DrawRectSolid(cx - 5.0f, FIELD_GROUND-50.0f-(float)e*28.0f, 0.0f, 10.0f, 6.0f,
 			                  friendly ? C2D_Color32(0xFF, 0xD0, 0x40, 0x60) : C2D_Color32(0x40, 0x40, 0x40, 0x60));
 		}
 	}
@@ -235,39 +241,25 @@ static void drawBases(const Sim& s)
 
 static void drawUnit(Unit& u, const Sim& s)
 {
-	const UnitDef& d = UNIT_DEFS[u.typeId];
-	int age = unitAge(u.typeId);
-	int kind = unitKind(u.typeId);
-	bool friendly = u.team == TEAM_GOOD;
-	bool attacking = u.attackTimer > d.attackTime * 0.55f || u.rangedTimer > 0.0f;
-	int anim = attacking ? 4 : 0;
-	int frame = (int)((g_frame / (attacking ? 4u : 7u) + (unsigned)u.id) & 3u);
-	int art = ART_U(age, kind) + anim + frame;
-
-	float h = 46.0f;
-	float w = h * 0.8f;
+	int state = u.alive ? u.action : 5;
+	const FlashClip& clip = FLASH_CLIPS[FLASH_UNIT_CLIPS[u.typeId][state]];
+	int frame = 0;
+	if (!u.alive) frame = (int)lroundf(80.0f-u.deathTimer*FLASH_FPS);
+	else if (state >= ACTION_MELEE) frame = u.actionFrame + u.animationStart - 1;
+	else if (state == ACTION_WALK) frame = (s.frame+u.id)%clip.count;
+	if (frame >= clip.count) frame = clip.count-1;
+	if (frame < 0) frame = 0;
+	const C2D_Image& art = g_unitImages[FLASH_FRAME_ART[clip.first+frame]];
+	float w = art.subtex->width, h = art.subtex->height;
 	float cx = wx(u.x);
-	float y = 140.0f - h;
-	if (attacking)
-		cx += u.dir * 2.0f;
-
-	if (u.id == g_selected)
-	{
-		C2D_DrawCircleSolid(cx, 140.0f, 0.0f, 13.0f, C_GOLD);
-		float mr = d.meleeRange * PX_PER_UNIT;
-		if (mr > 2.0f)
-			C2D_DrawCircleSolid(cx, 140.0f, 0.0f, mr, C2D_Color32(0xFF, 0xD0, 0x40, 0x30));
-	}
-
-	drawSprite(art, cx - w * 0.5f, y, w, h, !friendly);
-	int slot = ((int)u.id % FLASH_SLOTS + FLASH_SLOTS) % FLASH_SLOTS;
-	if (g_flash[slot] > 0.0f)
-		C2D_DrawRectSolid(cx - w * 0.5f, y, 0.0f, w, h,
-		                  C2D_Color32(0xFF, 0xFF, 0xFF, (u8)(110.0f * g_flash[slot] / 0.18f)));
-	drawHealthBar(cx - w * 0.5f, y - 4.0f, w, u.health / u.maxHealth);
+	if (cx+w < 0.0f || cx-w > FIELDW) return;
+	float y = FIELD_GROUND-h;
+	bool flip = u.team == TEAM_BAD;
+	C2D_DrawImageAt(art, cx + (flip ? w*0.5f : -w*0.5f), y, 0.0f, NULL, flip ? -1.0f : 1.0f, 1.0f);
+	if (!u.alive) return;
+	drawHealthBar(cx-12.0f, FIELD_GROUND-UNIT_HEIGHT[u.typeId]*FLASH_SCALE-5.0f, 24.0f, u.health/u.maxHealth);
 	if (u.healing)
 		drawSprite(A_FX_HEAL, cx - 8.0f, y - 18.0f, 16.0f, 16.0f, false);
-	(void)s;
 }
 
 static void drawBullets(const Sim& s)
@@ -277,10 +269,16 @@ static void drawBullets(const Sim& s)
 		if (!s.bullets[i].alive)
 			continue;
 		const Bullet& b = s.bullets[i];
-		float y = 140.0f - (b.y - GROUND_LEVEL) * 15.0f;
+		float y = FIELD_GROUND - (b.y - GROUND_LEVEL) * PX_PER_UNIT;
 		float x = wx(b.x);
+		if (b.kind == 21 || b.kind == 22)
+		{
+			int art = (b.kind == 21 ? A_FX_CAVE_0 : A_FX_ARROW_0) + ((b.frame / 4) & 3);
+			drawSprite(art, x-8.0f, y-8.0f, 16.0f, 16.0f, false);
+			continue;
+		}
 		u32 col = (b.team == TEAM_BAD) ? C_GOLD : C_TEXT;
-		C2D_DrawLine(x - b.vx * 1.6f, y, col, x, y, col, 1.0f, 0.0f);
+		C2D_DrawLine(x - b.vx * PX_PER_UNIT, y, col, x, y, col, 1.0f, 0.0f);
 		C2D_DrawCircleSolid(x, y, 0.0f, 1.5f, col);
 	}
 }
@@ -298,21 +296,21 @@ static void drawSpecial(const Sim& s)
 	case 5: base = A_FX_LASER_0;  count = 4; break;
 	default: base = A_FX_HEAL;    count = 1; break;
 	}
-	int frame = (int)((g_frame / 4u) & 3u);
+	int frame = (s.frame / 4) & 3;
 	int sprite = base + (count > 1 ? frame : 0);
 	if (s.spell.kind == 3)
 	{
 		for (int i = 0; i < s.unitCount; i++)
 			if (s.units[i].alive && s.units[i].team == s.spell.team)
-				drawSprite(sprite, wx(s.units[i].x) - 10.0f, 100.0f, 20.0f, 20.0f, false);
+				drawSprite(sprite, wx(s.units[i].x) - 10.0f, FIELD_GROUND-38.0f, 20.0f, 20.0f, false);
 		return;
 	}
 	if (s.spell.kind == 4)
 	{
-		drawSprite(sprite, 20.0f, 40.0f, 64.0f, 42.0f, false);
-		C2D_DrawLine(20.0f, 70.0f, C_GOLD, 370.0f, 70.0f, C_GOLD, 1.0f, 0.0f);
+		drawSprite(sprite, wx(s.spell.x)-32.0f, 28.0f, 64.0f, 42.0f, false);
 		return;
 	}
+	if (s.spell.kind == 1 || s.spell.kind == 2) return;
 	for (int i = 0; i < 7; i++)
 	{
 		float x = 20.0f + (float)((i * 61 + (int)(g_frame / 3u)) % 360);
@@ -455,7 +453,7 @@ static void drawMenu(const Sim& s)
 
 	if (g_mode == 1)
 	{
-		drawSprite(A_UI_TURRETS_0 + s.age, 0.0f, 186.0f, SCRW, 54.0f, false);
+		drawSprite(A_UI_TURRETS_0 + s.age*3, 0.0f, 186.0f, SCRW, 54.0f, false);
 		for (int i = 0; i < 3; i++)
 		{
 			int type = s.age * 3 + i;
@@ -465,13 +463,13 @@ static void drawMenu(const Sim& s)
 			char label[32];
 			snprintf(label, sizeof(label), "%s", d.name);
 			drawCard(2.0f + (float)i * 79.0f, 200.0f, 75.0f, 38.0f, label, cost,
-			         A_TURRET_0_0 + type, s.coins >= d.cost, AGE_COLOR[s.age]);
+			         ART_TURRET(type), s.coins >= d.cost, AGE_COLOR[s.age]);
 		}
 		drawButton(242.0f, 200.0f, 76.0f, 38.0f, "SELL", false, true, 0.50f);
 		return;
 	}
 
-	drawSprite(A_UI_UNITS_0 + s.age, 0.0f, 186.0f, SCRW, 54.0f, false);
+	drawSprite(A_UI_UNITS_0 + s.age*3, 0.0f, 186.0f, SCRW, 54.0f, false);
 	for (int i = 0; i < 3; i++)
 	{
 		int type = s.age * 3 + i;
@@ -579,7 +577,7 @@ static int pickUnit(float sx, float sy)
 		if (!u.alive || u.isBase)
 			continue;
 		float dx = wx(u.x) - sx;
-		float dy = (140.0f - 23.0f) - sy;
+		float dy = (FIELD_GROUND - 23.0f) - sy;
 		float d = dx * dx + dy * dy;
 		if (d < bestD * bestD)
 		{
@@ -656,6 +654,7 @@ static void restartGame()
 	g_confirmMenu = false;
 	g_accum = 0.0f;
 	g_cameraX = 0.0f;
+	g_flashInit = false;
 }
 
 static void handleTap(float sx, float sy)
@@ -835,15 +834,27 @@ int main(int argc, char** argv)
 	}
 	else
 		return fatalInit("aow.t3x");
+	for (int p=0; p<FLASH_SHEET_COUNT; p++)
+	{
+		g_unitSheets[p] = C2D_SpriteSheetLoadFromMem(FLASH_SHEET_DATA[p], *FLASH_SHEET_SIZES[p]);
+		if (!g_unitSheets[p]) return fatalInit("Flash animation atlas");
+		for (int i=0; i<FLASH_SHEET_LENGTH[p]; i++)
+			g_unitImages[FLASH_SHEET_FIRST[p]+i] = C2D_SpriteSheetGetImage(g_unitSheets[p], i);
+	}
 
 	audioInit();
+	srand((unsigned)svcGetSystemTick());
 	simInit(g_sim, g_difficulty);
 
 	touchPosition touch;
 	bool wasDown = false;
+	u64 lastFrameTime = osGetTime();
 	while (aptMainLoop())
 	{
 		gspWaitForVBlank();
+		u64 now = osGetTime();
+		float frameDt = fminf(0.25f, (now-lastFrameTime)/1000.0f);
+		lastFrameTime = now;
 		hidScanInput();
 		u32 kDown = hidKeysDown();
 		if (kDown & KEY_START)
@@ -859,11 +870,14 @@ int main(int argc, char** argv)
 		{
 			if (kDown & KEY_B)
 				g_help = !g_help;
+			bool wasHelp = g_help;
 			if (g_help)
-				continue;
-			if (kDown & KEY_LEFT) g_menuDiff = (g_menuDiff + 2) % 3;
-			if (kDown & KEY_RIGHT) g_menuDiff = (g_menuDiff + 1) % 3;
-			if (kDown & KEY_A)
+			{
+				if (kDown & KEY_A) g_help = false;
+			}
+			if (!g_help && (kDown & KEY_LEFT)) g_menuDiff = (g_menuDiff + 2) % 3;
+			if (!g_help && (kDown & KEY_RIGHT)) g_menuDiff = (g_menuDiff + 1) % 3;
+			if (!wasHelp && !g_help && (kDown & KEY_A))
 			{
 				g_difficulty = g_menuDiff;
 				restartGame();
@@ -884,7 +898,6 @@ int main(int argc, char** argv)
 				}
 				else if (kDown & KEY_B)
 					g_confirmMenu = false;
-				continue;
 			}
 			if ((kDown & KEY_A) && g_sim.gameOver)
 			{
@@ -915,9 +928,9 @@ int main(int argc, char** argv)
 			handleTap((float)touch.px, (float)touch.py);
 		wasDown = down;
 
-		if (!g_title)
+		if (!g_title && !g_confirmMenu)
 		{
-			g_accum += 1.0f / 60.0f;
+			g_accum += frameDt;
 			int steps = 0;
 			while (g_accum >= FIXED_DT && steps < 5)
 			{
@@ -927,8 +940,8 @@ int main(int argc, char** argv)
 			}
 			if (g_accum > 1.0f) g_accum = 0.0f;
 			for (int i = 0; i < g_sim.unitCount; i++)
-				noteDamage(g_sim.units[i], 1.0f / 60.0f);
-			if (g_sfxCooldown > 0.0f) g_sfxCooldown -= 1.0f / 60.0f;
+				noteDamage(g_sim.units[i], frameDt);
+			if (g_sfxCooldown > 0.0f) g_sfxCooldown -= frameDt;
 		}
 
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
@@ -941,7 +954,7 @@ int main(int argc, char** argv)
 		if (!g_title)
 		{
 			for (int i = 0; i < g_sim.unitCount; i++)
-				if (!g_sim.units[i].isBase && g_sim.units[i].alive)
+				if (!g_sim.units[i].isBase && (g_sim.units[i].alive || g_sim.units[i].deathTimer>0.0f))
 					drawUnit(g_sim.units[i], g_sim);
 			drawBullets(g_sim);
 			if (g_sim.paused)
@@ -990,6 +1003,8 @@ int main(int argc, char** argv)
 	C2D_TextBufDelete(g_textBuf);
 	C2D_FontFree(g_font);
 	if (g_artSheet) C2D_SpriteSheetFree(g_artSheet);
+	for (int p=0; p<FLASH_SHEET_COUNT; p++)
+		if (g_unitSheets[p]) C2D_SpriteSheetFree(g_unitSheets[p]);
 	if (g_backgroundSheet) C2D_SpriteSheetFree(g_backgroundSheet);
 	C2D_Fini();
 	gfxExit();

@@ -13,18 +13,11 @@ A 2D defense game rebuilt for the Nintendo 3DS (cartridge build, devkitARM). Por
 
 ## Differences from the original
 
-The balance tables (`3ds/source/data.h`) come from the decompiled Flash game — 16 unit types, 15 turret types, 5 ages, expansion costs 1000/3000/7500, age XP 4000/14000/45000/200000 and bases starting at 500 HP (+300 × new age on evolution). Unit, base, turret, UI and effect sprites are the original assets resized for the 3DS, and music and sound effects run through `ndsp`. The battlefield is wider than one screen and scrolls with the circle pad / ZL / ZR. The title screen lets you pick Normal/Harder/Impossible using the original multipliers (×1.3/×2.0). Turrets can be placed, sold and expanded, and the five age-specific specials are in.
+The original SWF runs at 40 fps. This revision compares its decompilation with the port and corrects all 16 unit / 15 turret rows, sequential training, cumulative XP evolution, casualty rewards, enemy production/evolution/turret schedules, animation hit frames and specials. Graphics preserve alpha and use the original forest background and 3,774 source animation frames.
 
-The full decompilation (including the original SWF) lives in a separate repo, [`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled), not in this one. Sources and rights are recorded in [`THIRD_PARTY.md`](THIRD_PARTY.md).
+Full visual and timing parity is not claimed. The dual-screen HUD, registration points and filters, some turret/particle/sound timing, and real-device behavior still need comparison. See [`FLASH_PARITY.md`](FLASH_PARITY.md) for the changes, automated checks and remaining differences. `pygame/` remains an unfinished data-only implementation.
 
-Still missing:
-
-- Saving and replays. The repo is never touched and the CIA sets `SaveDataSize: 0K`, so progress isn't kept anywhere.
-- Turret upgrades. Placement, selling and slot expansion work; per-turret upgrades don't.
-- The `pygame/` side. Just the data tables, so it doesn't run.
-- Hardware verification. Only the build and emulator/development checks are done.
-
-If you know the original well, filling these in would be the most useful thing you could do. Where to start is in [CONTRIBUTING.md](CONTRIBUTING.md#making-it-closer-to-the-original).
+The separate [`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled) repository holds the decompilation and original SWF. See [`THIRD_PARTY.md`](THIRD_PARTY.md) for asset provenance and rights.
 
 ## Install
 

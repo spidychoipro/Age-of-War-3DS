@@ -20,7 +20,27 @@ CLIPS = [
     [630,631,639,630,631,640], [646,647,654,661,662,655],
     [676,676,681,676,676,685], [646,647,654,661,662,655],
 ]
-SCALE = 400 / 650
+# The SWF stage is 650x450, but the battlefield itself is 1000px wide. Fit the
+# whole 1000px field into the 400px top screen so both bases stay visible.
+SCALE = 400 / 1000
+
+
+def foot_offset(im):
+    """Pixels from the top of the frame down to the last opaque row.
+
+    Source frames share a canvas and many leave a large transparent band below
+    the character. Aligning that transparent band to the ground line is what
+    makes the units look like they are fighting in the air.
+    """
+    alpha = im.getchannel('A')
+    width, height = im.size
+    threshold = max(1, width // 25)
+    for y in range(height - 1, -1, -1):
+        row = alpha.crop((0, y, width, y + 1))
+        if sum(1 for value in row.getdata() if value > 8) >= threshold:
+            return y + 1
+    return height
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -30,7 +50,7 @@ def main():
     repo = Path(__file__).resolve().parents[1]
     output = repo / '3ds/gfx/flash_units'
     output.mkdir(parents=True, exist_ok=True)
-    unique, paths, areas, frames, clips, ids = {}, [], [], [], [], {}
+    unique, paths, areas, frames, clips, ids, feet = {}, [], [], [], [], {}, []
     for sid in sorted({sid for row in CLIPS for sid in row}):
         directory = source / f'DefineSprite_{sid}'
         files = sorted(directory.glob('*.png'), key=lambda f: int(f.stem))
@@ -48,6 +68,7 @@ def main():
                 unique[digest] = index
                 paths.append(f'flash_units/{path.name}')
                 areas.append((im.width+2)*(im.height+2))
+                feet.append(foot_offset(im))
             frames.append(unique[digest])
         ids[sid] = len(clips)
         clips.append((offset,len(files)))
@@ -56,6 +77,8 @@ def main():
               'struct FlashClip { int first; int count; };',
               'static const unsigned short FLASH_FRAME_ART[] = {',
               ','.join(map(str,frames)), '};',
+               'static const unsigned short FLASH_FRAME_FOOT[] = {',
+               ','.join(map(str,feet)), '};',
               'static const FlashClip FLASH_CLIPS[] = {',
               ','.join('{%d,%d}'%c for c in clips), '};',
               'static const unsigned short FLASH_UNIT_CLIPS[16][6] = {']

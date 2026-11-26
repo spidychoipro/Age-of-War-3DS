@@ -7,24 +7,16 @@
 #include "flash_units_04_t3x.h"
 #include "flash_units_05_t3x.h"
 #include "flash_units_06_t3x.h"
-#include "flash_units_07_t3x.h"
-#include "flash_units_08_t3x.h"
-#include "flash_units_09_t3x.h"
-#include "flash_units_10_t3x.h"
-#include "flash_units_11_t3x.h"
-#include "flash_units_12_t3x.h"
-#include "flash_units_13_t3x.h"
-#include "flash_units_14_t3x.h"
-#define FLASH_SHEET_COUNT 15
+#define FLASH_SHEET_COUNT 7
 static const void* const FLASH_SHEET_DATA[] = {
-flash_units_00_t3x,flash_units_01_t3x,flash_units_02_t3x,flash_units_03_t3x,flash_units_04_t3x,flash_units_05_t3x,flash_units_06_t3x,flash_units_07_t3x,flash_units_08_t3x,flash_units_09_t3x,flash_units_10_t3x,flash_units_11_t3x,flash_units_12_t3x,flash_units_13_t3x,flash_units_14_t3x
+flash_units_00_t3x,flash_units_01_t3x,flash_units_02_t3x,flash_units_03_t3x,flash_units_04_t3x,flash_units_05_t3x,flash_units_06_t3x
 };
 static const unsigned int* const FLASH_SHEET_SIZES[] = {
-&flash_units_00_t3x_size,&flash_units_01_t3x_size,&flash_units_02_t3x_size,&flash_units_03_t3x_size,&flash_units_04_t3x_size,&flash_units_05_t3x_size,&flash_units_06_t3x_size,&flash_units_07_t3x_size,&flash_units_08_t3x_size,&flash_units_09_t3x_size,&flash_units_10_t3x_size,&flash_units_11_t3x_size,&flash_units_12_t3x_size,&flash_units_13_t3x_size,&flash_units_14_t3x_size
+&flash_units_00_t3x_size,&flash_units_01_t3x_size,&flash_units_02_t3x_size,&flash_units_03_t3x_size,&flash_units_04_t3x_size,&flash_units_05_t3x_size,&flash_units_06_t3x_size
 };
 static const int FLASH_SHEET_FIRST[] = {
-0,463,705,973,1228,1514,1684,1866,2152,2533,2684,2815,2912,3153,3268
+0,753,1324,1824,2548,2865,3243
 };
 static const int FLASH_SHEET_LENGTH[] = {
-463,242,268,255,286,170,182,286,381,151,131,97,241,115,39
+753,571,500,724,317,378,63
 };

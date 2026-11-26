@@ -19,13 +19,15 @@
 #define SCRW 320.0f
 #define SCRH 240.0f
 #define FIELDW 400.0f
-// Original 650px viewport, 1000px world. Match the original camera span.
-#define FLASH_SCALE (400.0f / 650.0f)
-#define PX_PER_UNIT (50.0f * FLASH_SCALE)
-#define FIELD_ORIGIN 0.0f
-#define WORLD_W (1000.0f * FLASH_SCALE)
-#define CAMERA_MAX (WORLD_W - FIELDW)
-#define FIELD_GROUND 210.0f
+// The SWF stage is 650x450, but the battlefield is 1000px wide. Generate the
+// sprites at 0.4 and lay the field out at 0.38 so both bases fit the top screen.
+#define FLASH_SCALE (400.0f / 1000.0f)
+#define FIELD_SCALE (380.0f / 1000.0f)
+#define PX_PER_UNIT (50.0f * FIELD_SCALE)
+#define FIELD_ORIGIN 10.0f
+#define WORLD_W (1000.0f * FIELD_SCALE)
+#define CAMERA_MAX 0.0f
+#define FIELD_GROUND 224.0f
 
 static C2D_TextBuf g_textBuf;
 static C2D_Text g_text;
@@ -186,13 +188,14 @@ static void noteDamage(Unit& u, float dt)
 
 static void drawBattlefield(const Sim& s)
 {
+	float bgTop = FIELD_GROUND-421.0f*FLASH_SCALE;
+	C2D_DrawRectSolid(0.0f, 0.0f, 0.0f, FIELDW, bgTop,
+	                  C2D_Color32(0x3C, 0xB1, 0xFF, 0xFF));
 	if (g_backgroundImage.tex)
 	{
 		C2D_DrawImageAt(g_backgroundImage, -g_cameraX-20.0f*FLASH_SCALE,
-			FIELD_GROUND-421.0f*FLASH_SCALE, 0.0f);
+			bgTop, 0.0f);
 	}
-	else
-		C2D_DrawRectSolid(0.0f, 0.0f, 0.0f, FIELDW, SCRH, C_PANEL);
 
 	// The original game's ground line is the visual anchor for every sprite.
 	if (s.age > 0)
@@ -249,15 +252,17 @@ static void drawUnit(Unit& u, const Sim& s)
 	else if (state == ACTION_WALK) frame = (s.frame+u.id)%clip.count;
 	if (frame >= clip.count) frame = clip.count-1;
 	if (frame < 0) frame = 0;
-	const C2D_Image& art = g_unitImages[FLASH_FRAME_ART[clip.first+frame]];
-	float w = art.subtex->width, h = art.subtex->height;
+	int artIndex = FLASH_FRAME_ART[clip.first+frame];
+	const C2D_Image& art = g_unitImages[artIndex];
+	float w = art.subtex->width;
+	float foot = (float)FLASH_FRAME_FOOT[artIndex];
 	float cx = wx(u.x);
 	if (cx+w < 0.0f || cx-w > FIELDW) return;
-	float y = FIELD_GROUND-h;
+	float y = FIELD_GROUND-foot;
 	bool flip = u.team == TEAM_BAD;
 	C2D_DrawImageAt(art, cx + (flip ? w*0.5f : -w*0.5f), y, 0.0f, NULL, flip ? -1.0f : 1.0f, 1.0f);
 	if (!u.alive) return;
-	drawHealthBar(cx-12.0f, FIELD_GROUND-UNIT_HEIGHT[u.typeId]*FLASH_SCALE-5.0f, 24.0f, u.health/u.maxHealth);
+	drawHealthBar(cx-9.0f, y-4.0f, 18.0f, u.health/u.maxHealth);
 	if (u.healing)
 		drawSprite(A_FX_HEAL, cx - 8.0f, y - 18.0f, 16.0f, 16.0f, false);
 }
@@ -323,47 +328,51 @@ static void drawSpecial(const Sim& s)
 
 static void drawHudTop(const Sim& s)
 {
-	drawSprite(A_UI_TOP, 0.0f, 0.0f, SCRW, 59.0f, false);
-	drawButton(3.0f, 2.0f, 45.0f, 24.0f, g_mode == 0 ? "UNIT" : "TURRET", g_mode == 1, true, 0.42f);
-	drawButton(50.0f, 2.0f, 45.0f, 24.0f, "AGE", false,
-	           s.age < AGE_FUTURE && s.exp >= AGE_XP[s.age], 0.48f);
-	drawButton(97.0f, 2.0f, 45.0f, 24.0f, "SPECIAL", false,
-	           s.specialTimer >= SPECIAL_COOLDOWN && s.spell.kind == 0, 0.40f);
-	drawButton(144.0f, 2.0f, 45.0f, 24.0f, "SLOTS", false,
-	           s.expansionLevel[TEAM_GOOD] < 3 && s.coins >= EXPANSION_COST[s.expansionLevel[TEAM_GOOD]], 0.44f);
-	drawButton(191.0f, 2.0f, 45.0f, 24.0f, "MENU", false, true, 0.44f);
+	// Use the original UI strip at its native 320x48 size. Stretching it made
+	// the buttons and resource readouts overlap.
+	drawSprite(A_UI_TOP, 0.0f, 0.0f, SCRW, 48.0f, false);
+	drawButton(2.0f, 3.0f, 46.0f, 21.0f, g_mode == 0 ? "UNITS" : "TURRET",
+	           g_mode == 1, true, 0.44f);
+	drawButton(50.0f, 3.0f, 45.0f, 21.0f, "AGE", false,
+	           s.age < AGE_FUTURE && s.exp >= AGE_XP[s.age], 0.50f);
+	drawButton(97.0f, 3.0f, 45.0f, 21.0f, "SPECIAL", false,
+	           s.specialTimer >= SPECIAL_COOLDOWN && s.spell.kind == 0, 0.44f);
+	drawButton(144.0f, 3.0f, 45.0f, 21.0f, "SLOTS", false,
+	           s.expansionLevel[TEAM_GOOD] < 3 &&
+	           s.coins >= EXPANSION_COST[s.expansionLevel[TEAM_GOOD]], 0.46f);
+	drawButton(191.0f, 3.0f, 45.0f, 21.0f, "MENU", false, true, 0.48f);
 
 	char buf[64];
+	drawSprite(A_UI_COIN, 240.0f, 3.0f, 14.0f, 14.0f, false);
 	snprintf(buf, sizeof(buf), "%d", (int)s.coins);
-	drawSprite(A_UI_COIN, 240.0f, 4.0f, 16.0f, 16.0f, false);
-	drawText(buf, 258.0f, 3.0f, 0.52f, C_GOLD);
+	drawText(buf, 257.0f, 2.0f, 0.56f, C_GOLD);
 	snprintf(buf, sizeof(buf), "XP %d", (int)s.exp);
-	drawText(buf, 240.0f, 22.0f, 0.48f, C_XP);
-	drawText(AGE_NAMES[s.age], 240.0f, 38.0f, 0.46f, AGE_COLOR[s.age]);
+	drawText(buf, 240.0f, 19.0f, 0.52f, C_XP);
+	drawText(AGE_NAMES[s.age], 240.0f, 33.0f, 0.48f, AGE_COLOR[s.age]);
 }
 
 static void drawQueue(const Sim& s)
 {
-	drawSprite(A_UI_ROOT, 0.0f, 60.0f, SCRW, 54.0f, false);
+	drawSprite(A_UI_ROOT, 0.0f, 48.0f, SCRW, 44.0f, false);
 	for (int i = 0; i < s.queueCount; i++)
 	{
 		const QueuedUnit& q = s.queue[i];
-		float x = 8.0f + (float)i * 26.0f;
+		float x = 8.0f + (float)i * 28.0f;
 		int age = unitAge(q.type);
 		int kind = unitKind(q.type);
-		drawSprite(ART_U(age, kind), x, 63.0f, 20.0f, 26.0f, false);
+		drawSprite(ART_U(age, kind), x, 51.0f, 22.0f, 26.0f, false);
 		float p = q.buildTime > 0.0f ? q.timeQueued / q.buildTime : 0.0f;
 		if (p > 1.0f) p = 1.0f;
-		C2D_DrawRectSolid(x, 92.0f, 0.0f, 20.0f, 5.0f, C_BAR);
-		C2D_DrawRectSolid(x, 92.0f, 0.0f, 20.0f * p, 5.0f, C_HP);
+		C2D_DrawRectSolid(x, 79.0f, 0.0f, 22.0f, 5.0f, C_BAR);
+		C2D_DrawRectSolid(x, 79.0f, 0.0f, 22.0f * p, 5.0f, C_HP);
 	}
 	if (s.queueCount == 0)
-		drawText("Ready for orders", 8.0f, 94.0f, 0.48f, C_TEXT_DIM);
+		drawText("Ready for orders", 8.0f, 77.0f, 0.52f, C_TEXT_DIM);
 	else
 	{
 		char buf[24];
 		snprintf(buf, sizeof(buf), "Training %d/5", s.queueCount);
-		drawText(buf, 200.0f, 94.0f, 0.44f, C_TEXT_DIM);
+		drawText(buf, 200.0f, 77.0f, 0.48f, C_TEXT_DIM);
 	}
 }
 
@@ -371,36 +380,41 @@ static void drawInfo(const Sim& s)
 {
 	Unit* fb = simBase(const_cast<Sim&>(s), TEAM_GOOD);
 	Unit* eb = simBase(const_cast<Sim&>(s), TEAM_BAD);
-	C2D_DrawRectSolid(0.0f, 114.0f, 0.0f, SCRW, 72.0f, C_PANEL);
-	drawText("YOUR BASE", 6.0f, 116.0f, 0.50f, C_GOOD);
-	drawText("ENEMY BASE", 166.0f, 116.0f, 0.50f, C_BAD);
+	C2D_DrawRectSolid(0.0f, 92.0f, 0.0f, SCRW, 104.0f, C_PANEL);
+	drawText("YOUR BASE", 6.0f, 94.0f, 0.52f, C_GOOD);
+	drawText("ENEMY BASE", 166.0f, 94.0f, 0.52f, C_BAD);
 	char buf[48];
 	snprintf(buf, sizeof(buf), "%d / %d", fb ? (int)fb->health : 0, fb ? (int)fb->maxHealth : 0);
-	drawText(buf, 6.0f, 128.0f, 0.54f, C2D_Color32(0xFF, 0xFF, 0xFF, 0xFF));
-	drawHealthBar(108.0f, 132.0f, 54.0f, fb ? fb->health / fb->maxHealth : 0.0f);
+	drawText(buf, 6.0f, 107.0f, 0.56f, C_TEXT);
+	drawHealthBar(108.0f, 111.0f, 54.0f, fb ? fb->health / fb->maxHealth : 0.0f);
 	snprintf(buf, sizeof(buf), "%d / %d", eb ? (int)eb->health : 0, eb ? (int)eb->maxHealth : 0);
-	drawText(buf, 166.0f, 128.0f, 0.54f, C2D_Color32(0xFF, 0xFF, 0xFF, 0xFF));
-	drawHealthBar(268.0f, 132.0f, 46.0f, eb ? eb->health / eb->maxHealth : 0.0f);
+	drawText(buf, 166.0f, 107.0f, 0.56f, C_TEXT);
+	drawHealthBar(268.0f, 111.0f, 46.0f, eb ? eb->health / eb->maxHealth : 0.0f);
 
 	if (g_placeType >= 0 || g_sellMode)
 	{
 		drawText(g_sellMode ? "CANCEL to stop selling" : "CANCEL to stop building",
-		         6.0f, 145.0f, 0.54f, C_GOLD);
+		         6.0f, 128.0f, 0.54f, C_GOLD);
 	}
 	else if (s.specialTimer >= SPECIAL_COOLDOWN && s.spell.kind == 0)
-		drawText("Special: ready", 6.0f, 145.0f, 0.54f, C_HP);
+		drawText("Special: ready", 6.0f, 128.0f, 0.54f, C_HP);
 	else
 	{
 		snprintf(buf, sizeof(buf), "Special: %.1fs", SPECIAL_COOLDOWN - s.specialTimer);
-		drawText(buf, 6.0f, 145.0f, 0.52f, C_TEXT_DIM);
+		drawText(buf, 6.0f, 128.0f, 0.52f, C_TEXT_DIM);
 	}
 	if (simMessageCount > 0)
 	{
-		float w = textWidth(simMessages[0], 0.56f) + 8.0f;
-		C2D_DrawRectSolid(4.0f, 160.0f, 0.0f, w, 14.0f, C_BAR);
-		drawText(simMessages[0], 8.0f, 162.0f, 0.56f, C_TEXT);
+		float w = textWidth(simMessages[0], 0.60f) + 8.0f;
+		C2D_DrawRectSolid(4.0f, 147.0f, 0.0f, w, 16.0f, C_BAR);
+		drawText(simMessages[0], 8.0f, 149.0f, 0.60f, C_TEXT);
 	}
-	drawText("ZL/ZR scroll   L/R mode   START menu", 6.0f, 176.0f, 0.46f, C_TEXT_DIM);
+
+	float need = s.age < AGE_FUTURE ? (float)AGE_XP[s.age] : 1.0f;
+	float progress = need > 0.0f ? fminf(1.0f, (float)s.exp / need) : 0.0f;
+	C2D_DrawRectSolid(6.0f, 170.0f, 0.0f, 308.0f, 6.0f, C_BAR);
+	C2D_DrawRectSolid(6.0f, 170.0f, 0.0f, 308.0f * progress, 6.0f, C_XP);
+	drawText(s.age < AGE_FUTURE ? "NEXT AGE" : "MAX AGE", 6.0f, 179.0f, 0.48f, C_TEXT_DIM);
 }
 
 static void drawCard(float x, float y, float w, float h, const char* label,
@@ -413,7 +427,7 @@ static void drawCard(float x, float y, float w, float h, const char* label,
 	C2D_DrawRectSolid(x + 1.0f, y + h - 17.0f, 0.0f, 2.0f, 16.0f, accent);
 	if (art >= 0)
 		drawSprite(art, x + (w - 32.0f) * 0.5f, y + 2.0f, 32.0f, h - 19.0f, false);
-	float scale = 0.48f;
+	float scale = 0.54f;
 	float lw = textWidth(label, scale);
 	if (lw > w - 5.0f)
 	{
@@ -422,14 +436,14 @@ static void drawCard(float x, float y, float w, float h, const char* label,
 	}
 	drawText(label, x + (w - lw) * 0.5f, y + h - 16.0f, scale,
 	         enabled ? C_TEXT : C_TEXT_DIM);
-	drawText(cost, x + 3.0f, y + 2.0f, 0.44f, enabled ? C_GOLD : C_TEXT_DIM);
+	drawText(cost, x + 3.0f, y + 2.0f, 0.48f, enabled ? C_GOLD : C_TEXT_DIM);
 }
 
 static void drawMenu(const Sim& s)
 {
 	if (g_placeType >= 0 || g_sellMode)
 	{
-		drawSprite(A_UI_TURRETS_0, 0.0f, 186.0f, SCRW, 54.0f, false);
+		drawSprite(A_UI_TURRETS_0, 0.0f, 200.0f, SCRW, 40.0f, false);
 		for (int i = 0; i < MAX_TURRETS; i++)
 		{
 			bool open = i <= s.expansionLevel[TEAM_GOOD] && s.turrets[TEAM_GOOD][i].alive;
@@ -453,7 +467,7 @@ static void drawMenu(const Sim& s)
 
 	if (g_mode == 1)
 	{
-		drawSprite(A_UI_TURRETS_0 + s.age*3, 0.0f, 186.0f, SCRW, 54.0f, false);
+		drawSprite(A_UI_TURRETS_0 + s.age*3, 0.0f, 200.0f, SCRW, 40.0f, false);
 		for (int i = 0; i < 3; i++)
 		{
 			int type = s.age * 3 + i;
@@ -469,7 +483,7 @@ static void drawMenu(const Sim& s)
 		return;
 	}
 
-	drawSprite(A_UI_UNITS_0 + s.age*3, 0.0f, 186.0f, SCRW, 54.0f, false);
+	drawSprite(A_UI_UNITS_0 + s.age*3, 0.0f, 200.0f, SCRW, 40.0f, false);
 	for (int i = 0; i < 3; i++)
 	{
 		int type = s.age * 3 + i;
@@ -577,7 +591,7 @@ static int pickUnit(float sx, float sy)
 		if (!u.alive || u.isBase)
 			continue;
 		float dx = wx(u.x) - sx;
-		float dy = (FIELD_GROUND - 23.0f) - sy;
+		float dy = (FIELD_GROUND - 10.0f) - sy;
 		float d = dx * dx + dy * dy;
 		if (d < bestD * bestD)
 		{
@@ -856,6 +870,7 @@ int main(int argc, char** argv)
 		float frameDt = fminf(0.25f, (now-lastFrameTime)/1000.0f);
 		lastFrameTime = now;
 		hidScanInput();
+		audioUpdate();
 		u32 kDown = hidKeysDown();
 		if (kDown & KEY_START)
 		{

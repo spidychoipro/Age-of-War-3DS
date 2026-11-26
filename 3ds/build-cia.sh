@@ -14,7 +14,9 @@ make -j"$(nproc)" "$@" ELF="$PWD/aow3ds.elf" 3dsx="$PWD/aow3ds.3dsx"
 
 # bannertool (carstene1ns C++ v1.2.3) only accepts image/audio/output and
 # requires a WAV (not a CWAV). Titles come from the RSF instead.
-[ -f silence.wav ] || python3 -c "import wave;w=wave.open('silence.wav','wb');w.setnchannels(1);w.setsampwidth(2);w.setframerate(8000);w.writeframes(b'\0\0'*4000);w.close()"
+PYTHON="${PYTHON:-python3}"
+if ! command -v "$PYTHON" >/dev/null 2>&1; then PYTHON=python; fi
+[ -f silence.wav ] || "$PYTHON" -c "import wave;w=wave.open('silence.wav','wb');w.setnchannels(1);w.setsampwidth(2);w.setframerate(8000);w.writeframes(b'\0\0'*4000);w.close()"
 
 bannertool makebanner \
 	-i banner.png \

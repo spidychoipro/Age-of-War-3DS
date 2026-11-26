@@ -13,7 +13,7 @@ Age of War의 Nintendo 3DS용 2D 디펜스 게임 포트입니다.
 - `SPECIAL`은 시대별 특수 공격을 사용합니다.
 - `SLOTS`는 포탑 슬롯을 확장합니다. 포탑 메뉴의 `SELL`로 슬롯을 선택해 판매할 수 있습니다.
 - 배경음악은 타이틀 화면의 `MUSIC ON/OFF`로 켜고 끕니다.
-- 전투 중 유닛을 터치하면 상태와 사거리를 확인할 수 있습니다.
+- 위 화면은 터치 입력을 받지 않습니다. 유닛과 기지 체력은 화면의 HP 바로 확인합니다.
 - `SELECT`는 일시정지, `A`는 게임 오버 후 재시작, `START`는 메뉴 복귀 확인 창입니다. 확인 창의 `YES`를 터치하거나 `A`를 누르면 타이틀로 돌아갑니다. (`B` 또는 `NO`로 취소)
 
 ## Linux에서 빌드
@@ -36,8 +36,12 @@ make
 
 ## 원작 에셋
 
-배경, 기지, 유닛 카드 배경은 `OtemPsych/Age-of-War`의 공개 릴리스 에셋을 3DS용으로
-축소·변환해 사용합니다. 유닛·포탑·UI·이펙트 스프라이트와 음악/효과음은 원작 리소스를
+전장 배경과 전체 유닛 애니메이션은 별도 decomp의 PNG를 변환해 사용합니다.
+기지·포탑·UI·이펙트 스프라이트와 음악/효과음은 원작 리소스를
 `tools/build-assets.ps1`로 변환해 넣었습니다. 원본 디컴파일 결과는 이 저장소에 커밋하지 않고
 [`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled)에
 따로 뒀습니다. 출처와 권리 상태는 루트의 [`THIRD_PARTY.md`](../THIRD_PARTY.md)를 보세요.
+
+원작 규칙 대조 결과, 회귀 테스트와 남아 있는 차이는
+[`FLASH_PARITY.md`](../FLASH_PARITY.md)에 기록합니다. 전체 애니메이션을 다시 만들려면
+루트에서 `python tools/build-flash-animations.py <decomp 체크아웃 경로>`를 실행합니다(Pillow 필요).

@@ -10,9 +10,10 @@
 #define MAX_TURRETS 4
 #define MAX_MESSAGES 4
 
-#define SPECIAL_COOLDOWN 45.0f
+#define SPECIAL_COOLDOWN 50.0f // 2000 frames at the SWF's 40 fps
 
 enum Side { TEAM_GOOD = 0, TEAM_BAD = 1 };
+enum UnitAction { ACTION_IDLE, ACTION_WALK, ACTION_MELEE, ACTION_SHOOT, ACTION_SHOOT_WALK };
 
 struct Unit
 {
@@ -34,6 +35,17 @@ struct Unit
 	float poisonDamage;
 	bool healing;
 	bool spawnedOffspring;
+	int action;
+	int actionFrame;
+	int hitFrame;
+	int cycleFrames;
+	int animationStart;
+	float deathTimer;
+	int scanFrames;
+	int targetId;
+	float nearestDistance;
+	float enemyDistance;
+	float stopDistance;
 };
 
 struct Bullet
@@ -46,6 +58,9 @@ struct Bullet
 	float vy;
 	float damage;
 	float life;
+	int kind; // 1..12 turret bullets, 21/22/24/25 specials
+	float gravity;
+	int frame;
 };
 
 struct QueuedUnit
@@ -60,6 +75,7 @@ struct TurretSlot
 	bool alive;
 	int type;
 	float cooldown;
+	float rotation;
 };
 
 struct Spell
@@ -67,6 +83,8 @@ struct Spell
 	int kind;
 	int team;
 	float timer;
+	int frame;
+	float x;
 };
 
 struct Sim
@@ -80,6 +98,9 @@ struct Sim
 	bool paused;
 	bool gameOver;
 	float elapsed;
+	float frameAccumulator;
+	int frame;
+	int nextUnitId;
 	float specialTimer;
 	float spawnCooldown[2];
 	float enemySpawnCooldown;   // u_timer in the SWF; negative when ready
@@ -91,6 +112,7 @@ struct Sim
 	int enemyPendingType;
 	int enemyUnitLevel;
 	int enemyUnitsOut;
+	bool enemyWantsUnit;
 	Unit units[MAX_UNITS];
 	int unitCount;
 	Bullet bullets[MAX_BULLETS];

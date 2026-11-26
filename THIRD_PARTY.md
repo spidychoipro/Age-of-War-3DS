@@ -1,5 +1,10 @@
 # 서드파티 에셋 출처
 
+원작 일치 작업에서 `3ds/gfx/background.png`와 `3ds/gfx/flash_units/*.png`는
+별도 `Age-of-War-Flash-Decompiled` 저장소의 배경·유닛 PNG를 축소한 것으로 교체/추가했습니다.
+`tools/build-flash-animations.py`가 PNG, 아틀라스 목록과 인덱스 헤더를 생성합니다.
+이 파일들도 아래의 원작 리소스와 같은 권리 상태이며 MIT 소스 코드 라이선스에 포함되지 않습니다.
+
 이 저장소의 **소스 코드**는 MIT 라이선스([LICENSE](LICENSE))를 따름. 여기 적힌 에셋은 그렇지 않음.
 
 주의할 점이 하나 있음. 아래 에셋의 출처인 `OtemPsych/Age-of-War` 저장소는 **2026-10-05 기준 LICENSE 파일이 없고, GitHub API로도 라이선스가 선언되어 있지 않음.** 라이선스가 없으면 redistribute 권한이 명시되지 않은 것이고, 공개 저장소에 있다는 이유만으로 redistribute가 허용되는 건 아니라고 보는 게 맞음.

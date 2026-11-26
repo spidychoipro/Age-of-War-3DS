@@ -14,6 +14,7 @@ reference/flash-decompiled/
 3ds/*.rsf
 3ds/*.cia
 3ds/silence.wav
+3ds/gfx/*.t3x
 *.pyc
 __pycache__/
 

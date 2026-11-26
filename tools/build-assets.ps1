@@ -17,7 +17,6 @@ $data = Join-Path $Repo '3ds\data'
 $srcDir = Join-Path $Repo '3ds\source'
 New-Item -ItemType Directory -Force -Path $gfx | Out-Null
 New-Item -ItemType Directory -Force -Path $data | Out-Null
-Get-ChildItem -File -Path $gfx | Remove-Item -Force
 
 $names = [System.Collections.Generic.List[string]]::new()
 $lines = [System.Collections.Generic.List[string]]::new()
@@ -27,9 +26,8 @@ function Add-Sprite {
     if ($env:AOW_DEBUG) { Write-Host "sprite $Name <- $File" }
     if (-not (Test-Path -LiteralPath $File)) { throw "missing asset: [$File]" }
     $out = Join-Path $gfx ($Name + '.png')
-    # Composite over opaque black so fully transparent pixels carry no RGB.
-    # Otherwise tex3ds can bleed white halos into the atlas padding.
-    & magick -size "${W}x${H}" xc:black '(' $File -background none -resize "${W}x${H}" -gravity center -extent "${W}x${H}" ')' -compose Over -composite PNG32:$out
+    # Preserve alpha. Compositing over xc:black makes every sprite opaque.
+    & magick $File -background none -resize "${W}x${H}" -gravity center -extent "${W}x${H}" PNG32:$out
     if ($LASTEXITCODE -ne 0) { throw "magick failed for $File" }
     $names.Add($Name)
     $lines.Add("#define $Name $($names.Count - 1)")
@@ -37,7 +35,7 @@ function Add-Sprite {
 
 function Pick-Frames {
     param([string]$Dir, [int]$Count)
-    $files = @(Get-ChildItem -File -Filter '*.png' -LiteralPath $Dir | Sort-Object Name)
+    $files = @(Get-ChildItem -File -Filter '*.png' -LiteralPath $Dir | Sort-Object { [regex]::Replace($_.Name, '\d+', { param($m) $m.Value.PadLeft(10, '0') }) })
     if ($files.Count -eq 0) { throw "no frames in $Dir" }
     $result = @()
     if ($Count -eq 1) { return @($files[0].FullName) }

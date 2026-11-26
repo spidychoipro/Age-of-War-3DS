@@ -116,6 +116,7 @@ else
 #---------------------------------------------------------------------------------
 
 DEPENDS	:=	$(OFILES:.o=.d)
+.SECONDARY: $(T3XFILES)
 
 $(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
 
@@ -123,7 +124,7 @@ $(OFILES_SOURCES) : $(HFILES)
 
 $(OUTPUT).elf	:	$(OFILES)
 
--include $(DEPENDS)
+-include $(DEPENDS) $(T3XFILES:.t3x=.d)
 
 #---------------------------------------------------------------------------------
 %.t3x.o	%_t3x.h :	%.t3x

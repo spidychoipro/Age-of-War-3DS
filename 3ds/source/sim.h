@@ -6,7 +6,7 @@
 // whole state can be reset with a single call and shared with the renderer.
 #define MAX_UNITS 160
 #define MAX_BULLETS 128
-#define MAX_QUEUE 8
+#define MAX_QUEUE 5   // SWF tray: one training plus four waiting
 #define MAX_TURRETS 4
 #define MAX_MESSAGES 4
 
@@ -82,10 +82,15 @@ struct Sim
 	float elapsed;
 	float specialTimer;
 	float spawnCooldown[2];
-	float enemySpawnCooldown;
+	float enemySpawnCooldown;   // u_timer in the SWF; negative when ready
+	float enemyStepTimer;       // 40-frame decision tick
 	float enemySpecialTimer;
 	float enemyAgeTimer;
-	int enemyCash;
+	float enemyUnitTimer;       // unlocks tier 2 at 1500 frames, tier 3 at 5000
+	float enemyCash;
+	int enemyPendingType;
+	int enemyUnitLevel;
+	int enemyUnitsOut;
 	Unit units[MAX_UNITS];
 	int unitCount;
 	Bullet bullets[MAX_BULLETS];

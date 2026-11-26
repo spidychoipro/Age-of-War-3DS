@@ -17,6 +17,13 @@
 #define SCRW 320.0f
 #define SCRH 240.0f
 #define FIELDW 400.0f
+// The SWF battlefield runs from x=50 to x=950 with bases at the two ends.
+// The 3DS port uses 20 simulation units for that span; only a 400 px window
+// is visible at once, so the view scrolls with the circle pad / ZL / ZR.
+#define PX_PER_UNIT 42.0f
+#define FIELD_ORIGIN 40.0f
+#define WORLD_W (FIELD_ORIGIN + 20.0f * PX_PER_UNIT + 40.0f)
+#define CAMERA_MAX (WORLD_W - FIELDW)
 
 static C2D_TextBuf g_textBuf;
 static C2D_Text g_text;
@@ -45,7 +52,13 @@ static unsigned g_fps = 60;
 static unsigned g_fpsFrames = 0;
 static unsigned g_fpsTick = 0;
 static float g_sfxCooldown = 0.0f;
+static float g_cameraX = 0.0f;
 static const float FIXED_DT = 1.0f / 50.0f;
+
+static float clampf(float v, float lo, float hi)
+{
+	return v < lo ? lo : (v > hi ? hi : v);
+}
 
 #define FLASH_SLOTS 128
 static int g_prevHp[FLASH_SLOTS];
@@ -75,7 +88,7 @@ static const u32 AGE_COLOR[5] =
 
 static float wx(float x)
 {
-	return 50.0f + x * 15.0f;
+	return FIELD_ORIGIN + x * PX_PER_UNIT - g_cameraX;
 }
 
 static void drawText(const char* str, float x, float y, float scale, u32 color)
@@ -168,7 +181,12 @@ static void noteDamage(Unit& u, float dt)
 static void drawBattlefield(const Sim& s)
 {
 	if (g_backgroundImage.tex)
-		C2D_DrawImageAt(g_backgroundImage, 0.0f, 0.0f, 0.0f);
+	{
+		float offset = fmodf(g_cameraX, FIELDW);
+		if (offset < 0.0f) offset += FIELDW;
+		C2D_DrawImageAt(g_backgroundImage, -offset, 0.0f, 0.0f);
+		C2D_DrawImageAt(g_backgroundImage, FIELDW - offset, 0.0f, 0.0f);
+	}
 	else
 		C2D_DrawRectSolid(0.0f, 0.0f, 0.0f, FIELDW, SCRH, C_PANEL);
 
@@ -236,7 +254,7 @@ static void drawUnit(Unit& u, const Sim& s)
 	if (u.id == g_selected)
 	{
 		C2D_DrawCircleSolid(cx, 140.0f, 0.0f, 13.0f, C_GOLD);
-		float mr = d.meleeRange * P2U * 15.0f;
+		float mr = d.meleeRange * PX_PER_UNIT;
 		if (mr > 2.0f)
 			C2D_DrawCircleSolid(cx, 140.0f, 0.0f, mr, C2D_Color32(0xFF, 0xD0, 0x40, 0x30));
 	}
@@ -331,14 +349,24 @@ static void drawQueue(const Sim& s)
 	drawSprite(A_UI_ROOT, 0.0f, 60.0f, SCRW, 54.0f, false);
 	for (int i = 0; i < s.queueCount; i++)
 	{
-		float x = 8.0f + (float)i * 22.0f;
-		float p = s.queue[i].buildTime > 0.0f ? s.queue[i].timeQueued / s.queue[i].buildTime : 0.0f;
+		const QueuedUnit& q = s.queue[i];
+		float x = 8.0f + (float)i * 26.0f;
+		int age = unitAge(q.type);
+		int kind = unitKind(q.type);
+		drawSprite(ART_U(age, kind), x, 63.0f, 20.0f, 26.0f, false);
+		float p = q.buildTime > 0.0f ? q.timeQueued / q.buildTime : 0.0f;
 		if (p > 1.0f) p = 1.0f;
-		C2D_DrawRectSolid(x, 100.0f, 0.0f, 18.0f, 5.0f, C_BAR);
-		C2D_DrawRectSolid(x, 100.0f, 0.0f, 18.0f * p, 5.0f, C_HP);
+		C2D_DrawRectSolid(x, 92.0f, 0.0f, 20.0f, 5.0f, C_BAR);
+		C2D_DrawRectSolid(x, 92.0f, 0.0f, 20.0f * p, 5.0f, C_HP);
 	}
 	if (s.queueCount == 0)
-		drawText("Ready for orders", 8.0f, 98.0f, 0.45f, C_TEXT_DIM);
+		drawText("Ready for orders", 8.0f, 94.0f, 0.48f, C_TEXT_DIM);
+	else
+	{
+		char buf[24];
+		snprintf(buf, sizeof(buf), "Training %d/5", s.queueCount);
+		drawText(buf, 200.0f, 94.0f, 0.44f, C_TEXT_DIM);
+	}
 }
 
 static void drawInfo(const Sim& s)
@@ -346,14 +374,14 @@ static void drawInfo(const Sim& s)
 	Unit* fb = simBase(const_cast<Sim&>(s), TEAM_GOOD);
 	Unit* eb = simBase(const_cast<Sim&>(s), TEAM_BAD);
 	C2D_DrawRectSolid(0.0f, 114.0f, 0.0f, SCRW, 72.0f, C_PANEL);
-	drawText("YOUR BASE", 6.0f, 116.0f, 0.48f, C_GOOD);
-	drawText("ENEMY BASE", 166.0f, 116.0f, 0.48f, C_BAD);
+	drawText("YOUR BASE", 6.0f, 116.0f, 0.50f, C_GOOD);
+	drawText("ENEMY BASE", 166.0f, 116.0f, 0.50f, C_BAD);
 	char buf[48];
 	snprintf(buf, sizeof(buf), "%d / %d", fb ? (int)fb->health : 0, fb ? (int)fb->maxHealth : 0);
-	drawText(buf, 6.0f, 129.0f, 0.50f, C_TEXT);
+	drawText(buf, 6.0f, 128.0f, 0.54f, C2D_Color32(0xFF, 0xFF, 0xFF, 0xFF));
 	drawHealthBar(108.0f, 132.0f, 54.0f, fb ? fb->health / fb->maxHealth : 0.0f);
 	snprintf(buf, sizeof(buf), "%d / %d", eb ? (int)eb->health : 0, eb ? (int)eb->maxHealth : 0);
-	drawText(buf, 166.0f, 129.0f, 0.50f, C_TEXT);
+	drawText(buf, 166.0f, 128.0f, 0.54f, C2D_Color32(0xFF, 0xFF, 0xFF, 0xFF));
 	drawHealthBar(268.0f, 132.0f, 46.0f, eb ? eb->health / eb->maxHealth : 0.0f);
 
 	if (g_placeType >= 0 || g_sellMode)
@@ -374,25 +402,29 @@ static void drawInfo(const Sim& s)
 		C2D_DrawRectSolid(4.0f, 160.0f, 0.0f, w, 14.0f, C_BAR);
 		drawText(simMessages[0], 8.0f, 162.0f, 0.56f, C_TEXT);
 	}
-	drawText("L/R mode   SELECT pause   A restart", 6.0f, 176.0f, 0.48f, C_TEXT_DIM);
+	drawText("ZL/ZR scroll   L/R mode   START menu", 6.0f, 176.0f, 0.46f, C_TEXT_DIM);
 }
 
 static void drawCard(float x, float y, float w, float h, const char* label,
                      const char* cost, int art, bool enabled, u32 accent)
 {
-	C2D_DrawRectSolid(x, y, 0.0f, w, h, enabled ? C_PANEL_L : C_BAR);
-	C2D_DrawRectSolid(x, y, 0.0f, w, 2.0f, accent);
+	// The original UI sheet already draws the card frame. Only add a dark
+	// strip behind the text so the label stays readable over bright art.
+	C2D_DrawRectSolid(x + 1.0f, y + h - 17.0f, 0.0f, w - 2.0f, 16.0f,
+	                  C2D_Color32(0x10, 0x0C, 0x08, 0xC0));
+	C2D_DrawRectSolid(x + 1.0f, y + h - 17.0f, 0.0f, 2.0f, 16.0f, accent);
 	if (art >= 0)
-		drawSprite(art, x + (w - 34.0f) * 0.5f, y + 3.0f, 34.0f, h - 17.0f, false);
-	float lw = textWidth(label, 0.44f);
-	if (lw > w - 4.0f)
+		drawSprite(art, x + (w - 32.0f) * 0.5f, y + 2.0f, 32.0f, h - 19.0f, false);
+	float scale = 0.48f;
+	float lw = textWidth(label, scale);
+	if (lw > w - 5.0f)
 	{
-		float s = 0.44f * (w - 4.0f) / lw;
-		drawText(label, x + 2.0f, y + h - 15.0f, s, enabled ? C_TEXT : C_TEXT_DIM);
+		scale = scale * (w - 5.0f) / lw;
+		lw = w - 5.0f;
 	}
-	else
-		drawText(label, x + (w - lw) * 0.5f, y + h - 15.0f, 0.44f, enabled ? C_TEXT : C_TEXT_DIM);
-	drawText(cost, x + 3.0f, y + 3.0f, 0.42f, enabled ? C_GOLD : C_TEXT_DIM);
+	drawText(label, x + (w - lw) * 0.5f, y + h - 16.0f, scale,
+	         enabled ? C_TEXT : C_TEXT_DIM);
+	drawText(cost, x + 3.0f, y + 2.0f, 0.44f, enabled ? C_GOLD : C_TEXT_DIM);
 }
 
 static void drawMenu(const Sim& s)
@@ -456,7 +488,7 @@ static void drawMenu(const Sim& s)
 	}
 	else
 	{
-		drawButton(242.0f, 200.0f, 76.0f, 38.0f, "LOCKED", false, false, 0.44f);
+		drawText("LOCKED", 256.0f, 216.0f, 0.46f, C_TEXT_DIM);
 	}
 }
 
@@ -509,7 +541,6 @@ static void drawTitle()
 		return;
 	}
 	drawSprite(A_UI_LOGO, 40.0f, 12.0f, 240.0f, 86.0f, false);
-	drawText("AGE OF WAR", 88.0f, 98.0f, 0.85f, C_GOLD);
 	static const char* names[3] = { "NORMAL", "HARDER", "IMPOSSIBLE" };
 	for (int i = 0; i < 3; i++)
 	{
@@ -517,8 +548,10 @@ static void drawTitle()
 		           g_menuDiff == i, true, 0.54f);
 	}
 	drawButton(58.0f, 200.0f, 204.0f, 22.0f, "HOW TO PLAY", false, true, 0.50f);
-	drawButton(236.0f, 4.0f, 80.0f, 18.0f, audioMusicOn() ? "MUSIC ON" : "MUSIC OFF",
-	           false, audioReady(), 0.40f);
+	const char* musicLabel = !audioReady() ? "NO AUDIO"
+	                         : (audioMusicReady() ? (audioMusicOn() ? "MUSIC ON" : "MUSIC OFF")
+	                                              : "NO MUSIC");
+	drawButton(236.0f, 4.0f, 80.0f, 18.0f, musicLabel, false, audioReady(), 0.40f);
 	drawText("L/R choose   A start", 90.0f, 228.0f, 0.46f, C_TEXT_DIM);
 }
 
@@ -622,6 +655,7 @@ static void restartGame()
 	g_sellMode = false;
 	g_confirmMenu = false;
 	g_accum = 0.0f;
+	g_cameraX = 0.0f;
 }
 
 static void handleTap(float sx, float sy)
@@ -862,6 +896,17 @@ int main(int argc, char** argv)
 				simTogglePause(g_sim);
 			if (kDown & KEY_L) g_mode = 0;
 			if (kDown & KEY_R) g_mode = 1;
+
+			// Manual camera, like moving the mouse to the edge in the SWF.
+			circlePosition circle;
+			hidCircleRead(&circle);
+			float move = circle.dx / 128.0f;
+			u32 held = hidKeysHeld();
+			if (held & KEY_DLEFT) move -= 1.0f;
+			if (held & KEY_DRIGHT) move += 1.0f;
+			if (held & KEY_ZL) move -= 1.0f;
+			if (held & KEY_ZR) move += 1.0f;
+			g_cameraX = clampf(g_cameraX + move * 6.0f, 0.0f, CAMERA_MAX);
 		}
 
 		hidTouchRead(&touch);

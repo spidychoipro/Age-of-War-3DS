@@ -82,13 +82,13 @@ Unique ID가 `0x0003FF3F`(개발용)이라서 시그패치가 있는 커스텀 �
 
 밸런스는 디컴파일한 플래시 원작 기준으로 맞췄음. `data.h`의 유닛 16종·포탑 15종·시대 5단계, 확장 비용과 나이 경험치가 원작 표와 같음. 유닛·기지·포탑·UI·이펙트 스프라이트도 원작 리소스를 3DS용으로 바꿔 넣었고, 음악/효과음과 난이도 선택, 시대별 특수기, 포탑 배치·판매까지 들어감.
 
-디컴파일 원본은 `reference/flash-decompiled/`에 그대로 있고, 변환 스크립트는 `tools/build-assets.ps1`임. 권리 상태는 [THIRD_PARTY.md](THIRD_PARTY.md) 참고.
+디컴파일 원본은 이 저장소에 커밋하지 않고 [`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled)에 그대로 둠. 로컬에서는 `reference/flash-decompiled/`에 체크아웃해서 대조하고, 변환 스크립트는 `tools/build-assets.ps1`임. 권리 상태는 [THIRD_PARTY.md](THIRD_PARTY.md) 참고.
 
 ### Making it closer to the original
 
 *English summary of this section. The details below are in Korean.*
 
-The balance now follows the decompiled Flash game: 16 units, 15 turrets, 5 ages, original expansion costs and age XP. The original sprites, audio, difficulty screen, five specials and turret placement/selling are in. The full decompilation is kept in `reference/flash-decompiled/` and `tools/build-assets.ps1` regenerates the converted assets. See [THIRD_PARTY.md](THIRD_PARTY.md) for rights.
+The balance now follows the decompiled Flash game: 16 units, 15 turrets, 5 ages, original expansion costs and age XP. The original sprites, audio, difficulty screen, five specials and turret placement/selling are in. The full decompilation is kept in a separate repo, [`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled), and `tools/build-assets.ps1` regenerates the converted assets. See [THIRD_PARTY.md](THIRD_PARTY.md) for rights.
 
 Still open:
 
@@ -123,7 +123,7 @@ libctru로 SD 카드에 직접 저장하려면 `svch`/`fs`를 써야 하고, 그
 
 - **처음이라 3DS 빌드부터 익히고 싶음** → 문서 오타, 죽은 코드 제거 같은 것. 하드웨어 없이 빌드만으로 끝나서 안전함
 - **포탑 업그레이드** → 위에서 말한 경로 추가. 데이터는 다 있음
-- **원작을 잘 아님** → `data.h`가 원작 기준이라, 원작 숫자와 다른 데가 보이면 이슈로 알려주면 좋음. `reference/flash-decompiled/`랑 대조해 보면 더 정확함
+- **원작을 잘 아님** → `data.h`가 원작 기준이라, 원작 숫자와 다른 데가 보이면 이슈로 알려주면 좋음. [`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled)를 로컬 `reference/flash-decompiled/`에 받아 대조해 보면 더 정확함
 - **원작을 아주 잘 암** → 남은 기능 순서대로. 첫 PR은 위 목록에서 하나만 고르는 게 나음. 세이브나 pygame 같은 큰 덩어리는 한 번에 다 하려 하면 리뷰가 빡세짐
 
 이쪽이 원작을 모르니까 뭐가 급한지는 기여자가 알려주는 거임. 다른 부분을 짚어주면 이슈로 남겨줘.

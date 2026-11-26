@@ -38,6 +38,6 @@ make
 
 배경, 기지, 유닛 카드 배경은 `OtemPsych/Age-of-War`의 공개 릴리스 에셋을 3DS용으로
 축소·변환해 사용합니다. 유닛·포탑·UI·이펙트 스프라이트와 음악/효과음은 원작 리소스를
-`tools/build-assets.ps1`로 변환해 넣었습니다. 원본 디컴파일 결과는 저장소 루트의
-`reference/flash-decompiled/`에 있습니다. 출처와 권리 상태는 루트의
-[`THIRD_PARTY.md`](../THIRD_PARTY.md)를 보세요.
+`tools/build-assets.ps1`로 변환해 넣었습니다. 원본 디컴파일 결과는 이 저장소에 커밋하지 않고
+[`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled)에
+따로 뒀습니다. 출처와 권리 상태는 루트의 [`THIRD_PARTY.md`](../THIRD_PARTY.md)를 보세요.

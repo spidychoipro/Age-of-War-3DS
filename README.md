@@ -14,9 +14,9 @@ C++/libctru로 3DS에 포트했고, 같은 요소를 파이썬(pygame)으로 옮
 
 ## 원작과의 차이
 
-밸런스 데이터(`3ds/source/data.h`)는 디컴파일한 플래시 원작 기준표를 그대로 넣었음 — 유닛 16종, 포탑 15종, 시대 5단계, 확장 비용 1000/3000/7500, 나이 업그레이드 경험치 500/4000/14000/45000/200000. 유닛·기지·포탑·UI·이펙트 스프라이트는 원작 리소스를 3DS 해상도에 맞춰 변환했고, 음악과 효과음도 `ndsp`로 연결함. 난이도는 원작 이름 그대로 타이틀에서 Normal/Harder/Impossible 중 고를 수 있고, 효과는 원작 배율(1.3/2.0)을 씀. 타이틀의 HOW TO PLAY에서 원작 설명 요약도 볼 수 있음. 포탑은 배치·판매·슬롯 확장이 되고, 시대별 5종 특수기도 넣음.
+밸런스 데이터(`3ds/source/data.h`)는 디컴파일한 플래시 원작 기준표를 그대로 넣었음 — 유닛 16종, 포탑 15종, 시대 5단계, 확장 비용 1000/3000/7500, 나이 업그레이드 경험치 4000/14000/45000/200000, 기지 체력 500 시작(시대 업마다 300×새 시대 추가). 유닛·기지·포탑·UI·이펙트 스프라이트는 원작 리소스를 3DS 해상도에 맞춰 변환했고, 음악과 효과음도 `ndsp`로 연결함. 전장은 원작처럼 한 화면보다 길어서 서클패드·ZL/ZR로 좌우 시점을 옮김. 난이도는 원작 이름 그대로 타이틀에서 Normal/Harder/Impossible 중 고를 수 있고, 효과는 원작 배율(1.3/2.0)을 씀. 타이틀의 HOW TO PLAY에서 원작 설명 요약도 볼 수 있음. 포탑은 배치·판매·슬롯 확장이 되고, 시대별 5종 특수기도 넣음.
 
-디컴파일 원본은 [`reference/flash-decompiled/`](reference/flash-decompiled/)에 그대로 들어 있음. 출처와 권리 상태는 [`THIRD_PARTY.md`](THIRD_PARTY.md)에 적었음.
+SWF 디컴파일 결과(원본 SWF 포함)는 이 저장소에 두지 않고 [`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled)에 그대로 올려둠. 출처와 권리 상태는 [`THIRD_PARTY.md`](THIRD_PARTY.md)에 적었음.
 
 아직 남은 것:
 
@@ -73,10 +73,13 @@ Unique ID는 `0x0003FF3F`(개발용 title ID)라서 시드 권한이 없어서 �
    gfx/aow/             3DS용으로 줄인 원작 스프라이트
    data/*.pcm           원작 음악/효과음(22050 Hz mono PCM16)
    source/audio.cpp     ndsp 재생 코드
-reference/              플래시 원작 디컴파일 원본(SWF, .as, PNG, MP3 포함)
+assets/audio/           원작 음악 원본(1035.mp3). PCM 변환 입력용
 pygame/                 파이썬 재구현. 데이터 테이블까지만 옮겨둔 상태(진행 중)
 install/                QR 코드 PNG + 스캔용 HTML
 tools/build-assets.ps1  원작 리소스를 3DS용 t3x/PCM으로 바꾸는 스크립트
+
+디컴파일 원본은 별도 저장소(`Age-of-War-Flash-Decompiled`)에 있음. 로컬에서 대조할 때만
+`reference/flash-decompiled/`에 체크아웃해서 쓰고, 이 저장소에는 커밋하지 않음.
 ```
 
 ## 에셋 출처
@@ -85,7 +88,7 @@ tools/build-assets.ps1  원작 리소스를 3DS용 t3x/PCM으로 바꾸는 스�
 
 - 배경/기지/유닛 카드 배경과 폰트: [`OtemPsych/Age-of-War`](https://github.com/OtemPsych/Age-of-War) 공개 릴리스 에셋을 3DS용으로 축소·변환.
 - 유닛·포탑·UI·이펙트 스프라이트와 음악/효과음: [`apiotrowski255/age-of-war`](https://github.com/apiotrowski255/age-of-war)에 들어 있는 원작 리소스를 3DS용으로 변환.
-- 플래시 원작 디컴파일 결과: [`erupturatis/Decompiled-flash-games-archive`](https://github.com/erupturatis/Decompiled-flash-games-archive)의 Age of War 폴더를 `reference/flash-decompiled/`에 그대로 넣음. 원본 SWF도 포함.
+- 플래시 원작 디컴파일 결과: [`erupturatis/Decompiled-flash-games-archive`](https://github.com/erupturatis/Decompiled-flash-games-archive)의 Age of War 폴더를 그대로 [`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled)에 보관. 원본 SWF도 포함.
 
 이 소스들에는 라이선스가 없거나 권리 상태가 불분명하다. 그래서 이 에셋은 이 저장소 MIT 라이선스 대상이 아니며, 권리 상태가 정리되지 않은 상태로 커밋되어 있다. 자세한 건 [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
@@ -93,7 +96,7 @@ tools/build-assets.ps1  원작 리소스를 3DS용 t3x/PCM으로 바꾸는 스�
 
 `tools/build-assets.ps1`은 원작 리소스 체크아웃을 `-Source`로 받아 `3ds/gfx/aow/`, `3ds/data/*.pcm`, `3ds/source/art_indices.h`를 다시 만든다. `magick`과 `ffmpeg`가 필요하다. 변환 결과는 커밋해두니까 보통은 안 돌려도 됨.
 
-이 저장소의 3DS 코드는 원작 게임 코드를 옮긴 게 아니라 독립 구현이다. `reference/`는 원작 동작을 대조하기 위한 참고 자료로 넣어둔 것뿐이다. 빌드 산출물은 릴리스에만 올리고 커밋하지 않는다.
+이 저장소의 3DS 코드는 원작 게임 코드를 옮긴 게 아니라 독립 구현이다. 원작 동작 대조용 디컴파일 본문은 별도 저장소에 있다. 빌드 산출물은 릴리스에만 올리고 커밋하지 않는다.
 
 ## 상태
 

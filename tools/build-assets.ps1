@@ -27,7 +27,9 @@ function Add-Sprite {
     if ($env:AOW_DEBUG) { Write-Host "sprite $Name <- $File" }
     if (-not (Test-Path -LiteralPath $File)) { throw "missing asset: [$File]" }
     $out = Join-Path $gfx ($Name + '.png')
-    & magick $File -background none -resize "${W}x${H}" -gravity center -extent "${W}x${H}" PNG32:$out
+    # Composite over opaque black so fully transparent pixels carry no RGB.
+    # Otherwise tex3ds can bleed white halos into the atlas padding.
+    & magick -size "${W}x${H}" xc:black '(' $File -background none -resize "${W}x${H}" -gravity center -extent "${W}x${H}" ')' -compose Over -composite PNG32:$out
     if ($LASTEXITCODE -ne 0) { throw "magick failed for $File" }
     $names.Add($Name)
     $lines.Add("#define $Name $($names.Count - 1)")
@@ -121,7 +123,7 @@ Set-Content -LiteralPath (Join-Path $srcDir 'art_indices.h') -Value $header -Enc
 # directly. No extra decoder is needed on the console.
 $audio = Join-Path $Source 'audio'
 $sounds = @(
-    @{ Name = 'music'; File = 'music\Glorious Morning.mp3' },
+    @{ Name = 'music'; Path = (Join-Path $Repo 'assets\audio\1035.mp3') },
     @{ Name = 'sfx_hit'; File = 'sfx\stab_01.mp3' },
     @{ Name = 'sfx_sword'; File = 'sfx\sword_clash_01.mp3' },
     @{ Name = 'sfx_whoosh'; File = 'sfx\whoosh_01.mp3' },
@@ -137,7 +139,7 @@ $sounds = @(
     @{ Name = 'sfx_fire'; File = 'sfx\fire_01.mp3' }
 )
 foreach ($sound in $sounds) {
-    $in = Join-Path $audio $sound.File
+    $in = if ($sound.ContainsKey('Path')) { $sound.Path } else { Join-Path $audio $sound.File }
     if (-not (Test-Path -LiteralPath $in)) { throw "missing sound: $in" }
     $out = Join-Path $data ($sound.Name + '.pcm')
     & ffmpeg -hide_banner -loglevel error -y -i $in -ac 1 -ar 22050 -f s16le $out

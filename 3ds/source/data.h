@@ -15,8 +15,8 @@ static const char* const AGE_NAMES[AGE_COUNT] =
 	"Stone Age", "Bronze Age", "Middle Age", "Industrial Age", "Future"
 };
 
-// Required experience to advance from the indexed age to the next one.
-static const int AGE_XP[AGE_COUNT] = { 500, 4000, 14000, 45000, 200000 };
+// SWF EV = [4000, 14000, 45000, 200000]; indexed by the current age.
+static const int AGE_XP[AGE_COUNT] = { 4000, 14000, 45000, 200000, 0 };
 static const int EXPANSION_COST[3] = { 1000, 3000, 7500 };
 
 struct UnitDef
@@ -86,4 +86,6 @@ static const TurretDef TURRET_DEFS[15] =
 static const float P2U = 0.45f;
 static const float GROUND_LEVEL = 2.0f;
 static const float BASE_X[2] = { 1.0f, 18.0f };
-static const float BASE_HEALTH[2] = { 8000.0f, 8000.0f };
+// The SWF starts both bases at 500 and adds 300 * new age on every evolution.
+static const float BASE_HEALTH[2] = { 500.0f, 500.0f };
+static const float BASE_HEALTH_PER_AGE = 300.0f;

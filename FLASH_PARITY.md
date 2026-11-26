@@ -39,12 +39,17 @@ Port baseline: `e5e3fe3a9e21dec1585e90e7956fb3de38798700`.
 
 - Preserve sprite alpha instead of flattening every sprite onto opaque black.
 - Sort numbered source frames numerically when sampling HUD art.
-- Use 3774 source animation frames (3307 unique images, 68 clips), including
+- Use 3774 source animation frames (3306 unique images, 68 clips), including
   idle, walking, attacking, shooting, shooting while walking and death states.
   Sixteen types share source clips where the original does. Rasterization and
   ETC1A4 compression adapt them to 3DS memory and texture limits.
-- Restore the decompiled forest backdrop and the original 650px viewport /
-  1000px battlefield camera ratio. Align actors to the backdrop's ground.
+- Restore the decompiled forest backdrop. Fit the whole 1000px battlefield into
+  the 400px top screen so both bases are visible at once, and align each frame's
+  last opaque row to the ground line instead of its transparent canvas edge.
+- Stream the original 110-second soundtrack in 16384-sample double-buffered
+  chunks, so it keeps looping and resumes correctly after the music toggle.
+  Rebuild the bottom HUD from the original strips at native size, with a single
+  XP row and larger card labels.
 - Correct interleaved base/turret/UI atlas indexing and enemy-age base art.
   Stack turret slots vertically and rotate turrets toward their targets.
 - Keep help and menu dialogs rendering and accepting touch input. Confirmation

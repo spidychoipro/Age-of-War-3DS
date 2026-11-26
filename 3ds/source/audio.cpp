@@ -47,14 +47,19 @@ namespace
 
 	const int SFX_CHANNELS = 6;
 	const int MUSIC_CHANNEL = 0;
+	const int MUSIC_BUFFERS = 2;
+	const u32 MUSIC_CHUNK = 16384;
 
 	bool g_ready = false;
 	bool g_musicReady = false;
 	Result g_lastResult = 0;
 	void* g_musicAlloc = NULL;
+	const void* g_musicData = NULL;
+	u32 g_musicSamples = 0;
+	u32 g_nextMusicChunk = 0;
 	void* g_sfxAlloc[SFX_COUNT] = { 0 };
 	const void* g_sfxData[SFX_COUNT] = { 0 };
-	ndspWaveBuf g_musicBuf;
+	ndspWaveBuf g_musicBuf[MUSIC_BUFFERS];
 	ndspWaveBuf g_sfxBuf[SFX_CHANNELS];
 	int g_nextChannel = 1;
 	bool g_musicOn = true;
@@ -83,6 +88,51 @@ namespace
 		mix[0] = 0.9f;
 		mix[1] = 0.9f;
 		ndspChnSetMix(ch, mix);
+	}
+
+	void setMusicMix()
+	{
+		float mix[12] = {0};
+		mix[0] = 0.55f;
+		mix[1] = 0.55f;
+		ndspChnSetMix(MUSIC_CHANNEL, mix);
+	}
+
+	void queueMusicChunk(int slot)
+	{
+		if (!g_musicReady || !g_musicData || g_musicSamples == 0)
+			return;
+		u32 start = g_nextMusicChunk * MUSIC_CHUNK;
+		if (start >= g_musicSamples)
+			start = 0;
+		u32 remaining = g_musicSamples - start;
+		u32 count = remaining < MUSIC_CHUNK ? remaining : MUSIC_CHUNK;
+		count &= ~15u;
+		if (count == 0)
+		{
+			start = 0;
+			count = MUSIC_CHUNK;
+		}
+		ndspWaveBuf& buf = g_musicBuf[slot];
+		buf.data_vaddr = (const void*)((const u8*)g_musicData + (size_t)start * 2);
+		buf.nsamples = count;
+		buf.looping = false;
+		buf.status = NDSP_WBUF_FREE;
+		ndspChnWaveBufAdd(MUSIC_CHANNEL, &buf);
+		g_nextMusicChunk = start / MUSIC_CHUNK + 1;
+		if (g_nextMusicChunk * MUSIC_CHUNK >= g_musicSamples)
+			g_nextMusicChunk = 0;
+	}
+
+	void restartMusic()
+	{
+		ndspChnWaveBufClear(MUSIC_CHANNEL);
+		resetChannel(MUSIC_CHANNEL);
+		setMusicMix();
+		memset(g_musicBuf, 0, sizeof(g_musicBuf));
+		g_nextMusicChunk = 0;
+		queueMusicChunk(0);
+		queueMusicChunk(1);
 	}
 }
 
@@ -113,23 +163,16 @@ void audioInit()
 		return;
 
 	ndspSetOutputMode(NDSP_OUTPUT_STEREO);
-	memset(&g_musicBuf, 0, sizeof(g_musicBuf));
+	memset(g_musicBuf, 0, sizeof(g_musicBuf));
 	memset(g_sfxBuf, 0, sizeof(g_sfxBuf));
 
 	const void* music = copyToLinear(music_pcm, music_pcm_size, &g_musicAlloc);
 	if (music)
 	{
-		resetChannel(MUSIC_CHANNEL);
-		g_musicBuf.data_vaddr = music;
-		g_musicBuf.nsamples = (music_pcm_size / 2) & ~15u;
-		g_musicBuf.looping = true;
-		g_musicBuf.status = NDSP_WBUF_FREE;
-		float musicMix[12] = {0};
-		musicMix[0] = 0.55f;
-		musicMix[1] = 0.55f;
-		ndspChnSetMix(MUSIC_CHANNEL, musicMix);
-		ndspChnWaveBufAdd(MUSIC_CHANNEL, &g_musicBuf);
+		g_musicData = music;
+		g_musicSamples = (music_pcm_size / 2) & ~15u;
 		g_musicReady = true;
+		restartMusic();
 	}
 
 	for (int i = 0; i < SFX_COUNT; i++)
@@ -150,6 +193,8 @@ void audioExit()
 	for (int i = 0; i < SFX_COUNT; i++)
 		if (g_sfxAlloc[i]) linearFree(g_sfxAlloc[i]);
 	g_musicAlloc = NULL;
+	g_musicData = NULL;
+	g_musicSamples = 0;
 	for (int i = 0; i < SFX_COUNT; i++)
 	{
 		g_sfxAlloc[i] = NULL;
@@ -186,13 +231,24 @@ void audioPlay(SfxId id)
 	ndspChnWaveBufAdd(ch, &buf);
 }
 
+void audioUpdate()
+{
+	if (!g_ready || !g_musicReady || !g_musicOn)
+		return;
+	for (int i = 0; i < MUSIC_BUFFERS; i++)
+	{
+		if (g_musicBuf[i].status == NDSP_WBUF_DONE)
+			queueMusicChunk(i);
+	}
+}
+
 void audioSetMusic(bool on)
 {
 	if (!g_ready || !g_musicReady || g_musicOn == on)
 		return;
 	g_musicOn = on;
 	if (on)
-		ndspChnWaveBufAdd(MUSIC_CHANNEL, &g_musicBuf);
+		restartMusic();
 	else
 		ndspChnWaveBufClear(MUSIC_CHANNEL);
 }

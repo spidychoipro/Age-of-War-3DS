@@ -22,6 +22,7 @@ enum SfxId
 
 void audioInit();
 void audioExit();
+void audioUpdate();
 void audioPlay(SfxId id);
 void audioSetMusic(bool on);
 bool audioReady();

@@ -21,6 +21,15 @@ bannertool makebanner \
 	-a silence.wav \
 	-o banner.bnr
 
+# makebanner only writes the banner image/audio. The title shown by 3DS menus
+# and emulators lives in the SMDH, so generate it explicitly.
+bannertool makesmdh \
+	-s "Age of War" \
+	-l "Age of War 3DS" \
+	-p "homebrew" \
+	-i icon.png \
+	-o icon.smdh
+
 # makerom v0.17 RSF: only the keys accepted by rsf_settings.c.
 cat > aow3ds.rsf <<EOF
 BasicInfo:
@@ -41,12 +50,22 @@ TitleInfo:
   Version           : 0
 EOF
 
-makerom -f cia -o aow3ds.cia \
+# Build the NCCH first, then package it with a fixed content id. Without the
+# explicit :0, makerom picks a random TMD content id and Azahar names the
+# installed file after it (e.g. 411f1d75.app).
+makerom -f cxi -o aow3ds.cxi \
 	-rsf aow3ds.rsf \
 	-desc App:33 \
 	-target d \
 	-elf aow3ds.elf \
-	-icon icon.png \
+	-icon icon.smdh \
+	-banner banner.bnr
+
+makerom -f cia -o aow3ds.cia \
+	-rsf aow3ds.rsf \
+	-target d \
+	-content aow3ds.cxi:0:0 \
+	-icon icon.smdh \
 	-banner banner.bnr
 
 ls -la aow3ds.cia

@@ -33,6 +33,8 @@ static Sim g_sim;
 static int g_difficulty = 0;
 static int g_menuDiff = 0;
 static bool g_title = true;
+static bool g_help = false;
+static bool g_confirmMenu = false;
 static int g_mode = 0;              // 0 = units, 1 = turrets
 static int g_selected = -1;
 static int g_placeType = -1;        // turret type awaiting placement
@@ -306,11 +308,14 @@ static void drawSpecial(const Sim& s)
 static void drawHudTop(const Sim& s)
 {
 	drawSprite(A_UI_TOP, 0.0f, 0.0f, SCRW, 59.0f, false);
-	drawButton(3.0f, 3.0f, 44.0f, 18.0f, g_mode == 0 ? "UNIT" : "TURR", g_mode == 1, true, 0.44f);
-	drawButton(50.0f, 3.0f, 44.0f, 18.0f, "AGE", false, s.age < AGE_FUTURE, 0.44f);
-	drawButton(97.0f, 3.0f, 44.0f, 18.0f, "SPEC", false, s.specialTimer >= SPECIAL_COOLDOWN, 0.44f);
-	drawButton(144.0f, 3.0f, 44.0f, 18.0f, "SLOT", false, s.expansionLevel[TEAM_GOOD] < 3, 0.44f);
-	drawButton(191.0f, 3.0f, 44.0f, 18.0f, "MUSIC", false, audioReady(), 0.40f);
+	drawButton(3.0f, 2.0f, 45.0f, 24.0f, g_mode == 0 ? "UNIT" : "TURRET", g_mode == 1, true, 0.42f);
+	drawButton(50.0f, 2.0f, 45.0f, 24.0f, "AGE", false,
+	           s.age < AGE_FUTURE && s.exp >= AGE_XP[s.age], 0.48f);
+	drawButton(97.0f, 2.0f, 45.0f, 24.0f, "SPECIAL", false,
+	           s.specialTimer >= SPECIAL_COOLDOWN && s.spell.kind == 0, 0.40f);
+	drawButton(144.0f, 2.0f, 45.0f, 24.0f, "SLOTS", false,
+	           s.expansionLevel[TEAM_GOOD] < 3 && s.coins >= EXPANSION_COST[s.expansionLevel[TEAM_GOOD]], 0.44f);
+	drawButton(191.0f, 2.0f, 45.0f, 24.0f, "MENU", false, true, 0.44f);
 
 	char buf[64];
 	snprintf(buf, sizeof(buf), "%d", (int)s.coins);
@@ -341,8 +346,8 @@ static void drawInfo(const Sim& s)
 	Unit* fb = simBase(const_cast<Sim&>(s), TEAM_GOOD);
 	Unit* eb = simBase(const_cast<Sim&>(s), TEAM_BAD);
 	C2D_DrawRectSolid(0.0f, 114.0f, 0.0f, SCRW, 72.0f, C_PANEL);
-	drawText("YOUR BASE", 6.0f, 117.0f, 0.42f, C_GOOD);
-	drawText("ENEMY BASE", 166.0f, 117.0f, 0.42f, C_BAD);
+	drawText("YOUR BASE", 6.0f, 116.0f, 0.48f, C_GOOD);
+	drawText("ENEMY BASE", 166.0f, 116.0f, 0.48f, C_BAD);
 	char buf[48];
 	snprintf(buf, sizeof(buf), "%d / %d", fb ? (int)fb->health : 0, fb ? (int)fb->maxHealth : 0);
 	drawText(buf, 6.0f, 129.0f, 0.50f, C_TEXT);
@@ -353,23 +358,23 @@ static void drawInfo(const Sim& s)
 
 	if (g_placeType >= 0 || g_sellMode)
 	{
-		drawText(g_sellMode ? "Tap a turret slot to sell it" : "Tap a turret slot to build",
-		         6.0f, 145.0f, 0.48f, C_GOLD);
+		drawText(g_sellMode ? "CANCEL to stop selling" : "CANCEL to stop building",
+		         6.0f, 145.0f, 0.54f, C_GOLD);
 	}
-	else if (s.specialTimer >= SPECIAL_COOLDOWN)
-		drawText("SPECIAL READY", 6.0f, 145.0f, 0.48f, C_HP);
+	else if (s.specialTimer >= SPECIAL_COOLDOWN && s.spell.kind == 0)
+		drawText("Special: ready", 6.0f, 145.0f, 0.54f, C_HP);
 	else
 	{
-		snprintf(buf, sizeof(buf), "SPECIAL %.1fs", SPECIAL_COOLDOWN - s.specialTimer);
-		drawText(buf, 6.0f, 145.0f, 0.46f, C_TEXT_DIM);
+		snprintf(buf, sizeof(buf), "Special: %.1fs", SPECIAL_COOLDOWN - s.specialTimer);
+		drawText(buf, 6.0f, 145.0f, 0.52f, C_TEXT_DIM);
 	}
 	if (simMessageCount > 0)
 	{
-		float w = textWidth(simMessages[0], 0.52f) + 8.0f;
+		float w = textWidth(simMessages[0], 0.56f) + 8.0f;
 		C2D_DrawRectSolid(4.0f, 160.0f, 0.0f, w, 14.0f, C_BAR);
-		drawText(simMessages[0], 8.0f, 162.0f, 0.52f, C_TEXT);
+		drawText(simMessages[0], 8.0f, 162.0f, 0.56f, C_TEXT);
 	}
-	drawText("SELECT pause   A restart   START title", 6.0f, 176.0f, 0.42f, C_TEXT_DIM);
+	drawText("L/R mode   SELECT pause   A restart", 6.0f, 176.0f, 0.48f, C_TEXT_DIM);
 }
 
 static void drawCard(float x, float y, float w, float h, const char* label,
@@ -379,15 +384,15 @@ static void drawCard(float x, float y, float w, float h, const char* label,
 	C2D_DrawRectSolid(x, y, 0.0f, w, 2.0f, accent);
 	if (art >= 0)
 		drawSprite(art, x + (w - 34.0f) * 0.5f, y + 3.0f, 34.0f, h - 17.0f, false);
-	float lw = textWidth(label, 0.38f);
+	float lw = textWidth(label, 0.44f);
 	if (lw > w - 4.0f)
 	{
-		float s = 0.38f * (w - 4.0f) / lw;
-		drawText(label, x + 2.0f, y + h - 14.0f, s, enabled ? C_TEXT : C_TEXT_DIM);
+		float s = 0.44f * (w - 4.0f) / lw;
+		drawText(label, x + 2.0f, y + h - 15.0f, s, enabled ? C_TEXT : C_TEXT_DIM);
 	}
 	else
-		drawText(label, x + (w - lw) * 0.5f, y + h - 14.0f, 0.38f, enabled ? C_TEXT : C_TEXT_DIM);
-	drawText(cost, x + 3.0f, y + 3.0f, 0.36f, enabled ? C_GOLD : C_TEXT_DIM);
+		drawText(label, x + (w - lw) * 0.5f, y + h - 15.0f, 0.44f, enabled ? C_TEXT : C_TEXT_DIM);
+	drawText(cost, x + 3.0f, y + 3.0f, 0.42f, enabled ? C_GOLD : C_TEXT_DIM);
 }
 
 static void drawMenu(const Sim& s)
@@ -412,7 +417,7 @@ static void drawMenu(const Sim& s)
 				           false, !s.turrets[TEAM_GOOD][i].alive && i <= s.expansionLevel[TEAM_GOOD], 0.44f);
 			}
 		}
-		drawButton(2.0f, 186.0f, 70.0f, 12.0f, "CANCEL", false, true, 0.38f);
+		drawButton(2.0f, 178.0f, 70.0f, 20.0f, "CANCEL", false, true, 0.48f);
 		return;
 	}
 
@@ -460,34 +465,76 @@ static void drawGameOver(const Sim& s)
 	if (!s.gameOver)
 		return;
 	bool win = simBase(const_cast<Sim&>(s), TEAM_BAD)->health <= 0.0f;
-	C2D_DrawRectSolid(0.0f, 118.0f, 0.0f, SCRW, 68.0f, C_BAR);
-	drawText(win ? "VICTORY!" : "DEFEAT", 96.0f, 128.0f, 1.1f, win ? C_HP : C_BAD);
-	drawText("A: restart   START: title", 58.0f, 160.0f, 0.55f, C_TEXT);
+	C2D_DrawRectSolid(0.0f, 118.0f, 0.0f, SCRW, 78.0f, C_BAR);
+	drawText(win ? "Victory!" : "Defeat!", 108.0f, 124.0f, 0.95f, win ? C_HP : C_BAD);
+	drawText(win ? "You destroyed the enemy base." : "Maybe you didn't try hard enough?",
+	         12.0f, 146.0f, 0.50f, C_TEXT);
+	drawButton(90.0f, 166.0f, 140.0f, 26.0f, "PLAY AGAIN", false, true, 0.50f);
+}
+
+static void drawHelp()
+{
+	drawSprite(A_UI_MENU_BG, 0.0f, 0.0f, SCRW, SCRH, false);
+	C2D_DrawRectSolid(0.0f, 0.0f, 0.0f, SCRW, SCRH, C2D_Color32(0x00, 0x00, 0x00, 0xD8));
+	drawText("HOW TO PLAY", 96.0f, 8.0f, 0.75f, C_GOLD);
+	static const char* lines[] =
+	{
+		"Destroy the enemy base to win.",
+		"Kill units to earn XP and reach 5 ages.",
+		"Each age has its own special attack.",
+		"Specials need time to recharge.",
+		"Buy and sell turrets with money.",
+		"Bases can't be repaired. Choose well.",
+	};
+	for (int i = 0; i < 6; i++)
+		drawText(lines[i], 10.0f, 36.0f + (float)i * 26.0f, 0.50f, C_TEXT);
+	drawButton(110.0f, 204.0f, 100.0f, 24.0f, "BACK", false, true, 0.52f);
+}
+
+static void drawConfirmMenu()
+{
+	C2D_DrawRectSolid(0.0f, 78.0f, 0.0f, SCRW, 82.0f, C_BAR);
+	drawText("Return to menu?", 68.0f, 88.0f, 0.70f, C_GOLD);
+	drawButton(36.0f, 122.0f, 112.0f, 28.0f, "YES", false, true, 0.54f);
+	drawButton(172.0f, 122.0f, 112.0f, 28.0f, "NO", false, true, 0.54f);
 }
 
 static void drawTitle()
 {
 	drawSprite(A_UI_MENU_BG, 0.0f, 0.0f, SCRW, SCRH, false);
 	C2D_DrawRectSolid(0.0f, 0.0f, 0.0f, SCRW, SCRH, C2D_Color32(0x00, 0x00, 0x00, 0x90));
-	drawSprite(A_UI_LOGO, 40.0f, 24.0f, 240.0f, 90.0f, false);
-	drawText("AGE OF WAR", 84.0f, 130.0f, 1.1f, C_GOLD);
-	static const char* names[3] = { "NORMAL", "HARD", "IMPOSSIBLE" };
+	if (g_help)
+	{
+		drawHelp();
+		return;
+	}
+	drawSprite(A_UI_LOGO, 40.0f, 12.0f, 240.0f, 86.0f, false);
+	drawText("AGE OF WAR", 88.0f, 98.0f, 0.85f, C_GOLD);
+	static const char* names[3] = { "NORMAL", "HARDER", "IMPOSSIBLE" };
 	for (int i = 0; i < 3; i++)
 	{
-		drawButton(58.0f, 160.0f + (float)i * 24.0f, 204.0f, 20.0f, names[i],
-		           g_menuDiff == i, true, 0.55f);
+		drawButton(58.0f, 124.0f + (float)i * 24.0f, 204.0f, 22.0f, names[i],
+		           g_menuDiff == i, true, 0.54f);
 	}
-	drawText("< > choose   A start", 88.0f, 226.0f, 0.46f, C_TEXT_DIM);
+	drawButton(58.0f, 200.0f, 204.0f, 22.0f, "HOW TO PLAY", false, true, 0.50f);
+	drawButton(236.0f, 4.0f, 80.0f, 18.0f, audioMusicOn() ? "MUSIC ON" : "MUSIC OFF",
+	           false, audioReady(), 0.40f);
+	drawText("L/R choose   A start", 90.0f, 228.0f, 0.46f, C_TEXT_DIM);
 }
 
 // --- input -----------------------------------------------------------------
 
-#define BTN_UNIT   0
-#define BTN_AGE    1
-#define BTN_SPEC   2
-#define BTN_SLOT   3
-#define BTN_MUSIC  4
-#define BTN_CANCEL 5
+#define BTN_UNIT    0
+#define BTN_AGE     1
+#define BTN_SPEC    2
+#define BTN_SLOT    3
+#define BTN_MENU    4
+#define BTN_CANCEL  5
+#define BTN_BACK    6
+#define BTN_YES     7
+#define BTN_NO      8
+#define BTN_RESTART 9
+#define BTN_MUSIC   10
 
 static int pickUnit(float sx, float sy)
 {
@@ -514,25 +561,42 @@ static int hitButton(float px, float py)
 {
 	if (g_title)
 	{
-		if (py >= 160.0f && py < 232.0f)
+		if (g_help)
 		{
-			int id = (int)((py - 160.0f) / 24.0f);
+			if (py >= 204.0f && py < 228.0f && px >= 110.0f && px < 210.0f) return BTN_BACK;
+			return -1;
+		}
+		if (py < 24.0f && px >= 236.0f) return BTN_MUSIC;
+		if (py >= 124.0f && py < 194.0f)
+		{
+			int id = (int)((py - 124.0f) / 24.0f);
 			if (id >= 0 && id < 3) return 100 + id;
 		}
+		if (py >= 200.0f && py < 222.0f) return 103;
 		return -1;
 	}
-	if (py < 22.0f)
+	if (g_confirmMenu)
+	{
+		if (py >= 122.0f && py < 150.0f) return px < 148.0f ? BTN_YES : BTN_NO;
+		return -1;
+	}
+	if (g_sim.gameOver)
+	{
+		if (py >= 166.0f && py < 192.0f && px >= 90.0f && px < 230.0f) return BTN_RESTART;
+		return -1;
+	}
+	if (py < 26.0f)
 	{
 		if (px < 48.0f) return BTN_UNIT;
 		if (px < 95.0f) return BTN_AGE;
 		if (px < 142.0f) return BTN_SPEC;
 		if (px < 189.0f) return BTN_SLOT;
-		if (px < 236.0f) return BTN_MUSIC;
+		if (px < 236.0f) return BTN_MENU;
 		return -1;
 	}
 	if (g_placeType >= 0 || g_sellMode)
 	{
-		if (py < 186.0f && py > 178.0f && px < 72.0f) return BTN_CANCEL;
+		if (py >= 178.0f && py < 200.0f && px < 72.0f) return BTN_CANCEL;
 		if (py >= 200.0f)
 		{
 			int col = (int)((px - 2.0f) / 79.0f);
@@ -549,23 +613,64 @@ static int hitButton(float px, float py)
 	return -1;
 }
 
+static void restartGame()
+{
+	simInit(g_sim, g_difficulty);
+	g_selected = -1;
+	g_mode = 0;
+	g_placeType = -1;
+	g_sellMode = false;
+	g_confirmMenu = false;
+	g_accum = 0.0f;
+}
+
 static void handleTap(float sx, float sy)
 {
 	if (g_title)
 	{
 		int id = hitButton(sx, sy);
-		if (id >= 100)
+		if (id == BTN_BACK)
+			g_help = false;
+		else if (id == BTN_MUSIC)
+			audioSetMusic(!audioMusicOn());
+		else if (id == 103)
+			g_help = true;
+		else if (id >= 100 && id < 103)
 		{
 			g_menuDiff = id - 100;
 			g_difficulty = g_menuDiff;
-			simInit(g_sim, g_difficulty);
+			restartGame();
 			g_title = false;
+			g_help = false;
 			audioPlay(SFX_SWORD);
 		}
 		return;
 	}
-	if (g_sim.gameOver)
+	if (g_confirmMenu)
+	{
+		int id = hitButton(sx, sy);
+		if (id == BTN_YES)
+		{
+			g_title = true;
+			g_help = false;
+			g_confirmMenu = false;
+			g_placeType = -1;
+			g_sellMode = false;
+			g_selected = -1;
+		}
+		else if (id == BTN_NO)
+			g_confirmMenu = false;
 		return;
+	}
+	if (g_sim.gameOver)
+	{
+		if (hitButton(sx, sy) == BTN_RESTART)
+		{
+			restartGame();
+			audioPlay(SFX_SWORD);
+		}
+		return;
+	}
 
 	int id = hitButton(sx, sy);
 	if (id == BTN_CANCEL)
@@ -606,8 +711,8 @@ static void handleTap(float sx, float sy)
 			simAddExpansion(g_sim);
 			audioPlay(SFX_HIT);
 			break;
-		case BTN_MUSIC:
-			audioSetMusic(!audioMusicOn());
+		case BTN_MENU:
+			g_confirmMenu = true;
 			break;
 		default:
 		{
@@ -711,31 +816,46 @@ int main(int argc, char** argv)
 		{
 			if (g_title)
 				break;
-			g_title = true;
+			g_confirmMenu = !g_confirmMenu;
 			g_placeType = -1;
 			g_sellMode = false;
 			continue;
 		}
 		if (g_title)
 		{
+			if (kDown & KEY_B)
+				g_help = !g_help;
+			if (g_help)
+				continue;
 			if (kDown & KEY_LEFT) g_menuDiff = (g_menuDiff + 2) % 3;
 			if (kDown & KEY_RIGHT) g_menuDiff = (g_menuDiff + 1) % 3;
 			if (kDown & KEY_A)
 			{
 				g_difficulty = g_menuDiff;
-				simInit(g_sim, g_difficulty);
+				restartGame();
 				g_title = false;
 				audioPlay(SFX_SWORD);
 			}
 		}
 		else
 		{
+			if (g_confirmMenu)
+			{
+				if (kDown & KEY_A)
+				{
+					g_title = true;
+					g_help = false;
+					g_confirmMenu = false;
+					g_selected = -1;
+				}
+				else if (kDown & KEY_B)
+					g_confirmMenu = false;
+				continue;
+			}
 			if ((kDown & KEY_A) && g_sim.gameOver)
 			{
-				simInit(g_sim, g_difficulty);
-				g_selected = -1;
-				g_mode = 0;
-				g_accum = 0.0f;
+				restartGame();
+				audioPlay(SFX_SWORD);
 				continue;
 			}
 			if (kDown & KEY_SELECT)
@@ -800,6 +920,10 @@ int main(int argc, char** argv)
 			drawInfo(g_sim);
 			drawMenu(g_sim);
 			drawGameOver(g_sim);
+			if (g_sim.paused && !g_sim.gameOver)
+				drawText("PAUSED - SELECT to resume", 60.0f, 100.0f, 0.55f, C_GOLD);
+			if (g_confirmMenu)
+				drawConfirmMenu();
 		}
 		C2D_Flush();
 		C3D_FrameEnd(0);

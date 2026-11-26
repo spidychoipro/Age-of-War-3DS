@@ -13,9 +13,9 @@ A 2D defense game rebuilt for the Nintendo 3DS (cartridge build, devkitARM). Por
 
 ## Differences from the original
 
-The balance tables (`3ds/source/data.h`) come from the decompiled Flash game — 16 unit types, 15 turret types, 5 ages, expansion costs 1000/3000/7500 and age XP 500/4000/14000/45000/200000. Unit, base, turret, UI and effect sprites are the original assets resized for the 3DS, and music and sound effects run through `ndsp`. The title screen lets you pick Normal/Hard/Impossible using the original multipliers (×1.3/×2.0). Turrets can be placed, sold and expanded, and the five age-specific specials are in.
+The balance tables (`3ds/source/data.h`) come from the decompiled Flash game — 16 unit types, 15 turret types, 5 ages, expansion costs 1000/3000/7500, age XP 4000/14000/45000/200000 and bases starting at 500 HP (+300 × new age on evolution). Unit, base, turret, UI and effect sprites are the original assets resized for the 3DS, and music and sound effects run through `ndsp`. The battlefield is wider than one screen and scrolls with the circle pad / ZL / ZR. The title screen lets you pick Normal/Harder/Impossible using the original multipliers (×1.3/×2.0). Turrets can be placed, sold and expanded, and the five age-specific specials are in.
 
-The full decompilation is in [`reference/flash-decompiled/`](reference/flash-decompiled/). Sources and rights are recorded in [`THIRD_PARTY.md`](THIRD_PARTY.md).
+The full decompilation (including the original SWF) lives in a separate repo, [`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled), not in this one. Sources and rights are recorded in [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
 Still missing:
 
@@ -72,17 +72,19 @@ Controls and a longer build description are in [`3ds/README.md`](3ds/README.md).
    gfx/aow/             original sprites resized for the 3DS
    data/*.pcm           original music/SFX (22050 Hz mono PCM16)
    source/audio.cpp     ndsp playback
-reference/              full Flash decompilation (SWF, .as, PNG, MP3)
+assets/audio/           original music source (1035.mp3), used for PCM conversion
 pygame/                 Python reimplementation. Only the data tables are ported so far (WIP)
 install/                QR code PNG + a scan page in HTML
 tools/build-assets.ps1  regenerates the 3DS t3x/PCM assets from an original asset checkout
 ```
 
+The full decompilation is kept in a separate repo (`Age-of-War-Flash-Decompiled`). Check it out under `reference/flash-decompiled/` locally if you need to compare behavior; it is not committed here.
+
 ## Asset credits
 
 - Background, base, unit card art and font: resized from the public release assets of [`OtemPsych/Age-of-War`](https://github.com/OtemPsych/Age-of-War).
 - Unit/turret/UI/effect sprites and music/SFX: converted from the original assets in [`apiotrowski255/age-of-war`](https://github.com/apiotrowski255/age-of-war).
-- Flash decompilation: the Age of War folder from [`erupturatis/Decompiled-flash-games-archive`](https://github.com/erupturatis/Decompiled-flash-games-archive), kept as-is in `reference/flash-decompiled/`, including the original SWF.
+- Flash decompilation: the Age of War folder from [`erupturatis/Decompiled-flash-games-archive`](https://github.com/erupturatis/Decompiled-flash-games-archive), kept as-is in [`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled), including the original SWF.
 
 Those sources have no license or unresolved rights. None of these assets are covered by this repo's MIT license, and they sit here with their rights unresolved. Details in [`THIRD_PARTY.md`](THIRD_PARTY.md).
 

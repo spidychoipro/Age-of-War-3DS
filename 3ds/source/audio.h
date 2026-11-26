@@ -25,4 +25,6 @@ void audioExit();
 void audioPlay(SfxId id);
 void audioSetMusic(bool on);
 bool audioReady();
+bool audioMusicReady();
 bool audioMusicOn();
+unsigned audioLastResult();

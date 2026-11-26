@@ -1,3 +1,6 @@
+# Full SWF decompilation lives in its own repo, not here.
+reference/flash-decompiled/
+
 # devkitPro / build output
 3ds/build/
 3ds/*.3dsx

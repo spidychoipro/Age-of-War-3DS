@@ -1,6 +1,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "sim.h"
 #include "audio.h"
@@ -13,6 +14,14 @@ namespace
 	const float SPAWN_X_MARGIN = 1.6f;
 	const float SPECIAL_TIMER = SPECIAL_COOLDOWN;
 	const float ENEMY_SPECIAL_FIRST = 28.0f;
+	// SWF: step_time = 40 frames, uf = 0.3, u_timer < -5, uof < 6.
+	// The fixed step is 50 Hz, so one Flash frame is 1/50 second here.
+	const float ENEMY_STEP_TIME = 40.0f / 50.0f;
+	const float ENEMY_SPAWN_CHANCE = 0.3f;
+	const float ENEMY_TIER2_TIME = 1500.0f / 50.0f;
+	const float ENEMY_TIER3_TIME = 5000.0f / 50.0f;
+	const float ENEMY_AGE_TIME = 8000.0f / 50.0f;
+	const int ENEMY_MAX_UNITS = 6;
 
 	void push(const char* msg)
 	{
@@ -22,19 +31,10 @@ namespace
 		simMessageCount = simMessageCount < MAX_MESSAGES ? simMessageCount + 1 : MAX_MESSAGES;
 	}
 
-	float difficultyHealth(int difficulty)
+	float difficultyScale(int difficulty)
 	{
+		// SWF: Harder multiplies enemy health and damage by 1.3, Impossible by 2.
 		return difficulty == 2 ? 2.0f : (difficulty == 1 ? 1.3f : 1.0f);
-	}
-
-	float difficultyDamage(int difficulty)
-	{
-		return difficulty == 2 ? 1.6f : (difficulty == 1 ? 1.2f : 1.0f);
-	}
-
-	float difficultyIncome(int difficulty)
-	{
-		return difficulty == 2 ? 0.8f : (difficulty == 1 ? 0.9f : 1.0f);
 	}
 
 	float clamp(float v, float lo, float hi)
@@ -56,7 +56,7 @@ namespace
 		u.x = BASE_X[team] + u.dir * SPAWN_X_MARGIN;
 		u.y = GROUND_LEVEL;
 		const UnitDef& d = UNIT_DEFS[type];
-		float scale = team == TEAM_BAD ? difficultyHealth(s.difficulty) : 1.0f;
+		float scale = team == TEAM_BAD ? difficultyScale(s.difficulty) : 1.0f;
 		u.maxHealth = d.health * scale;
 		u.health = u.maxHealth;
 		return &u;
@@ -126,11 +126,18 @@ namespace
 			}
 			else
 			{
+				// SWF: reward = Math.round(EN[id][1] * 1.3); XP = reward * 2.
+				const UnitDef& d = UNIT_DEFS[target.typeId];
+				int reward = (int)roundf(d.cost * 1.3f);
 				if (target.team == TEAM_BAD)
 				{
-					const UnitDef& d = UNIT_DEFS[target.typeId];
-					s.coins += d.cost / 10.0f;
-					s.exp += d.health / 12.0f;
+					s.coins += reward;
+					s.exp += reward * 2;
+				}
+				else
+				{
+					s.enemyCash += reward;
+					if (s.enemyUnitsOut > 0) s.enemyUnitsOut--;
 				}
 				audioPlay(target.typeId % 3 == 2 ? SFX_DIE_TANK : SFX_DIE);
 			}
@@ -181,7 +188,7 @@ namespace
 		Unit* enemy = findTarget(s, u, d.meleeRange, u.dir);
 		if (enemy && u.attackTimer <= 0.0f)
 		{
-			float damage = d.meleeDamage * (u.team == TEAM_BAD ? difficultyDamage(s.difficulty) : 1.0f);
+			float damage = d.meleeDamage * (u.team == TEAM_BAD ? difficultyScale(s.difficulty) : 1.0f);
 			damageUnit(s, *enemy, damage, false);
 			u.attackTimer = d.attackTime;
 			audioPlay(SFX_SWORD);
@@ -191,7 +198,7 @@ namespace
 		Unit* ranged = findTarget(s, u, d.rangedRange, u.dir);
 		if (ranged && d.rangedDamage > 0 && u.rangedTimer <= 0.0f)
 		{
-			float damage = d.rangedDamage * (u.team == TEAM_BAD ? difficultyDamage(s.difficulty) : 1.0f);
+			float damage = d.rangedDamage * (u.team == TEAM_BAD ? difficultyScale(s.difficulty) : 1.0f);
 			fireBullet(s, u.team, u.x, u.y + 0.7f, ranged->x, ranged->y + 0.5f,
 			           damage, 7.0f + (float)u.typeId * 0.1f);
 			u.rangedTimer = d.attackTime * 1.2f;
@@ -206,7 +213,7 @@ namespace
 		Unit* base = findBase(s, u.team == TEAM_GOOD ? TEAM_BAD : TEAM_GOOD);
 		if (base && fabsf(base->x - u.x) < d.meleeRange && u.attackTimer <= 0.0f)
 		{
-			float damage = d.meleeDamage * (u.team == TEAM_BAD ? difficultyDamage(s.difficulty) : 1.0f);
+			float damage = d.meleeDamage * (u.team == TEAM_BAD ? difficultyScale(s.difficulty) : 1.0f);
 			damageUnit(s, *base, damage, false);
 			u.attackTimer = d.attackTime;
 		}
@@ -268,7 +275,7 @@ namespace
 					}
 				}
 				if (!target || slot.cooldown > 0.0f) continue;
-				float dmg = def.damage * (team == TEAM_BAD ? difficultyDamage(s.difficulty) : 1.0f);
+				float dmg = def.damage * (team == TEAM_BAD ? difficultyScale(s.difficulty) : 1.0f);
 				fireBullet(s, team, base->x, 3.4f, target->x, target->y + 0.5f, dmg, 9.0f);
 				slot.cooldown = def.cooldown;
 				audioPlay(SFX_TURRET);
@@ -287,7 +294,7 @@ namespace
 		if (kind == 1 || kind == 2 || kind == 4 || kind == 5)
 		{
 			float damage = (kind == 4 ? 220.0f : (kind == 5 ? 320.0f : 140.0f));
-			damage *= team == TEAM_BAD ? difficultyDamage(s.difficulty) : 1.0f;
+			damage *= team == TEAM_BAD ? difficultyScale(s.difficulty) : 1.0f;
 			for (int i = 0; i < s.unitCount; i++)
 			{
 				Unit& u = s.units[i];
@@ -313,14 +320,30 @@ namespace
 	{
 		if (s.gameOver) return;
 		s.enemySpawnCooldown -= dt;
+		s.enemyStepTimer -= dt;
 		s.enemyAgeTimer -= dt;
+		s.enemyUnitTimer += dt;
 		s.enemySpecialTimer -= dt;
-		s.enemyCash += dt * (5.0f + s.enemyTechLevel * 4.0f) * difficultyIncome(s.difficulty);
 
-		if (s.enemyAgeTimer <= 0.0f && s.enemyTechLevel < s.age)
+		// SWF: unit_level goes 1 -> 2 at 1500 frames, 2 -> 3 at 5000 frames.
+		if (s.enemyUnitLevel == 1 && s.enemyUnitTimer >= ENEMY_TIER2_TIME)
+			s.enemyUnitLevel = 2;
+		if (s.enemyUnitLevel == 2 && s.enemyUnitTimer >= ENEMY_TIER3_TIME)
+			s.enemyUnitLevel = 3;
+
+		// The computer evolves on its own 8000-frame clock, not with the player.
+		if (s.enemyAgeTimer <= 0.0f && s.enemyTechLevel < AGE_COUNT)
 		{
 			s.enemyTechLevel++;
-			s.enemyAgeTimer = 20.0f;
+			s.enemyAgeTimer = ENEMY_AGE_TIME;
+			Unit* base = findBase(s, TEAM_BAD);
+			if (base)
+			{
+				base->maxHealth += BASE_HEALTH_PER_AGE * s.enemyTechLevel;
+				base->health = base->maxHealth;
+			}
+			// eaddons grows with the age in the SWF.
+			s.expansionLevel[TEAM_BAD] = s.enemyTechLevel - 1;
 		}
 
 		if (s.enemySpecialTimer <= 0.0f)
@@ -332,33 +355,39 @@ namespace
 			push("Enemy used a special attack!");
 		}
 
-		if (s.enemySpawnCooldown <= 0.0f)
+		// Every 40 frames there is a 30% chance to queue one unit. No more
+		// than six enemy units may be outstanding, and a new one is only
+		// queued once u_timer has been below -5 for a bit.
+		if (s.enemyStepTimer <= 0.0f)
 		{
-			int maxType = s.enemyTechLevel * 3 + 2;
-			if (maxType > 14) maxType = 14;
-			int minType = s.enemyTechLevel > 0 ? (s.enemyTechLevel - 1) * 3 : 0;
-			int type = minType + ((int)(s.elapsed * 7.0f) % (maxType - minType + 1));
-			if (type >= 0 && type < 16)
-				spawnUnit(s, TEAM_BAD, type);
-			s.enemySpawnCooldown = fmaxf(1.2f, 4.0f - s.enemyTechLevel * 0.4f - s.difficulty * 0.3f);
+			s.enemyStepTimer += ENEMY_STEP_TIME;
+			if (s.enemyPendingType < 0 && s.enemySpawnCooldown < -0.1f &&
+			    s.enemyUnitsOut < ENEMY_MAX_UNITS && (rand() % 100) < 30)
+			{
+				int type = (rand() % s.enemyUnitLevel) + 1 + (s.enemyTechLevel - 1) * 3;
+				if (type >= 16) type = 15;
+				s.enemyPendingType = type;
+				s.enemySpawnCooldown = UNIT_DEFS[type].buildTime;
+				s.enemyUnitsOut++;
+			}
+		}
+		if (s.enemyPendingType >= 0 && s.enemySpawnCooldown <= 0.0f)
+		{
+			spawnUnit(s, TEAM_BAD, s.enemyPendingType);
+			s.enemyPendingType = -1;
 		}
 
-		// Enemy expands and builds turrets with the cash it earns.
-		if (s.expansionLevel[TEAM_BAD] < 3 && s.enemyCash > 1200.0f * (s.expansionLevel[TEAM_BAD] + 1))
+		// The SWF's AI builds turrets on a fixed age schedule and its cash
+		// deduction uses a misspelled variable, so they are effectively free.
+		int wantSlots = s.enemyTechLevel - 1;
+		if (wantSlots > MAX_TURRETS - 1) wantSlots = MAX_TURRETS - 1;
+		for (int i = 0; i <= wantSlots; i++)
 		{
-			s.enemyCash -= 1200.0f * (s.expansionLevel[TEAM_BAD] + 1);
-			s.expansionLevel[TEAM_BAD]++;
-		}
-		for (int i = 0; i <= s.expansionLevel[TEAM_BAD] && i < MAX_TURRETS; i++)
-		{
-			if (!s.turrets[TEAM_BAD][i].alive)
-			{
-				int type = s.enemyTechLevel * 3;
-				if (type > 14) type = 14;
-				s.turrets[TEAM_BAD][i].alive = true;
-				s.turrets[TEAM_BAD][i].type = type;
-				break;
-			}
+			if (s.turrets[TEAM_BAD][i].alive) continue;
+			int type = (s.enemyTechLevel - 1) * 3 + (i % 3);
+			if (type > 14) type = 14;
+			s.turrets[TEAM_BAD][i].alive = true;
+			s.turrets[TEAM_BAD][i].type = type;
 		}
 	}
 }
@@ -378,16 +407,22 @@ void simInit(Sim& s, int difficulty)
 {
 	memset(&s, 0, sizeof(s));
 	s.difficulty = clamp(difficulty, 0, 2);
-	s.coins = 500.0f;
+	// SWF create_game(): cash = 175, e_cash = 100.
+	s.coins = 175.0f;
 	s.age = AGE_CAVE;
 	s.techLevel = 1;
 	s.enemyTechLevel = 1;
-	s.enemyCash = 200;
+	s.enemyCash = 100.0f;
 	s.spawnCooldown[0] = 0.0f;
 	s.spawnCooldown[1] = 0.0f;
-	s.enemySpawnCooldown = 2.0f;
+	s.enemySpawnCooldown = 0.0f;
+	s.enemyStepTimer = ENEMY_STEP_TIME;
 	s.enemySpecialTimer = ENEMY_SPECIAL_FIRST;
-	s.enemyAgeTimer = 30.0f;
+	s.enemyAgeTimer = ENEMY_AGE_TIME;
+	s.enemyUnitTimer = 0.0f;
+	s.enemyPendingType = -1;
+	s.enemyUnitLevel = 1;
+	s.enemyUnitsOut = 0;
 	s.expansionLevel[TEAM_GOOD] = 0;
 	s.expansionLevel[TEAM_BAD] = 0;
 	s.spell.kind = 0;
@@ -409,7 +444,6 @@ void simStep(Sim& s, float dt)
 {
 	if (s.paused || s.gameOver) return;
 	s.elapsed += dt;
-	s.coins += dt * (3.0f + s.age * 2.0f);
 	if (s.specialTimer < SPECIAL_COOLDOWN)
 		s.specialTimer = fminf(SPECIAL_COOLDOWN, s.specialTimer + dt);
 
@@ -456,6 +490,13 @@ bool simUpgradeAge(Sim& s)
 		return false;
 	s.exp -= AGE_XP[s.age];
 	s.age++;
+	Unit* base = findBase(s, TEAM_GOOD);
+	if (base)
+	{
+		base->maxHealth += BASE_HEALTH_PER_AGE * s.age;
+		base->health += BASE_HEALTH_PER_AGE * s.age;
+		if (base->health > base->maxHealth) base->health = base->maxHealth;
+	}
 	push("New age reached!");
 	audioPlay(SFX_SWORD);
 	return true;

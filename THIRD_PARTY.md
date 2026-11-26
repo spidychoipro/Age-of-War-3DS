@@ -26,10 +26,14 @@
 
 | 경로 | 원본 |
 | --- | --- |
-| `reference/flash-decompiled/**` | 플래시 원작 디컴파일 결과 전체. 원본 SWF 포함 |
+| `assets/audio/1035.mp3` | 원작 BGM 원본. PCM 변환 입력으로만 씀 |
 | `3ds/gfx/aow/*.png`, `3ds/gfx/aow.t3s`, `3ds/gfx/aow.t3x` | 원작 유닛·기지·포탑·UI·이펙트 스프라이트를 3DS용으로 리사이즈/아틀라스화 |
 | `3ds/data/*.pcm` | 원작 음악/효과음을 22050 Hz mono PCM16으로 변환 |
 | `3ds/source/art_indices.h` | 위 아틀라스의 인덱스 정의(자동 생성) |
+
+디컴파일 결과 전체(원본 SWF, 스크립트, 스프라이트, 사운드, 텍스트)는 이 저장소에 두지 않고
+[`Age-of-War-Flash-Decompiled`](https://github.com/spidychoipro/Age-of-War-Flash-Decompiled)에 보관함.
+로컬 `reference/flash-decompiled/`는 `.gitignore`로 막아둔 작업용 체크아웃임.
 
 디컴파일 출처: <https://github.com/erupturatis/Decompiled-flash-games-archive> (Age of War 폴더)
 
@@ -37,7 +41,7 @@
 
 원본 SWF: archive.org의 `flash_age_of_war` 항목에서 받음.
 
-이 저장소의 3DS 코드는 원작 코드를 옮긴 게 아니라 디컴파일된 수치와 동작을 참고해 다시 구현한 것임. `reference/`는 대조용 원본 보관임.
+이 저장소의 3DS 코드는 원작 코드를 옮긴 게 아니라 디컴파일된 수치와 동작을 참고해 다시 구현한 것임.
 
 ## 출처가 확인되지 않은 파일
 
@@ -58,4 +62,4 @@
 - 게임에 실제로 쓰이는 에셋(`3ds/gfx/`, `3ds/data/`)을 갈아타는 건 이슈에서 먼저 논의함. 화면 크기·색상·폰트 폭이 코드에 박혀 있어서 에셋만 바꾸면 UI가 깨질 수 있음.
 - 원작 에셋의 권리 상태가 정리되면 이 문서를 그때 갱신함.
 
-English summary: assets under `3ds/gfx/`, `3ds/data/` come from `OtemPsych/Age-of-War` and original game resources in `apiotrowski255/age-of-war`; `reference/flash-decompiled/` is a full decompilation from `erupturatis/Decompiled-flash-games-archive`. The user explicitly approved adding these original resources. None of them are covered by this repo's MIT license, and their rights are unresolved. Assets under `pygame/Assets/` have undocumented provenance. Don't commit new third-party assets without an issue first, unless the user explicitly says otherwise.
+English summary: assets under `3ds/gfx/`, `3ds/data/` come from `OtemPsych/Age-of-War` and original game resources in `apiotrowski255/age-of-war`. The full SWF decompilation from `erupturatis/Decompiled-flash-games-archive` lives in the separate `Age-of-War-Flash-Decompiled` repo; `assets/audio/1035.mp3` is the one original file kept here as a build input. The user explicitly approved adding these original resources. None of them are covered by this repo's MIT license, and their rights are unresolved. Assets under `pygame/Assets/` have undocumented provenance. Don't commit new third-party assets without an issue first, unless the user explicitly says otherwise.
